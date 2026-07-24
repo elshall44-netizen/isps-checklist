@@ -13,14 +13,14 @@ A single-file web app that reads a vessel's **Ship Security Plan (SSP, PDF)** �
 
 | File | What it is |
 |---|---|
-| `index.html` | The entire app. Deploy this. |
-| `MSC-CKS-00009_Rev_3_Editable_2.docx` | The blank editable checklist (uploaded through the page at run time). |
+| `index.html` | The entire app, **with the blank MSC-CKS-00009 Rev 3 checklist embedded inside it**. Deploy this single file. |
 | `README.md` | This file. |
 
-At run time the page needs:
-1. the vessel's **SSP** as a text-based PDF (required),
-2. the **blank editable checklist** `.docx` (required),
-3. the **SSA** as a separate PDF (optional — only when it is not an appendix of the SSP).
+At run time the user uploads:
+1. the vessel's **SSP** as a text-based PDF (required) — uploading **only** the SSP means the SSA is included inside it;
+2. the **SSA** as a separate PDF (optional) — uploading it means the SSP does **not** include the SSA.
+
+Section 1 (SSA & On-Scene Survey) references are taken **only from the SSA** — the separate document when uploaded, otherwise the SSA part detected inside the SSP. Section 2 (SSP) references are taken **only from the SSP**. The **Vessel Name and Class ID header fields are left empty** for the auditor to fill in.
 
 ---
 
@@ -94,5 +94,5 @@ Each run then archives the SSP, the completed checklist and the summary to `isps
 ## Notes / limits
 
 - PDF text extraction needs a **text-based** SSP (not a scanned image). Scanned plans need OCR first — the app detects this and refuses with a clear message.
-- The checklist template must be the MSC-CKS-00009 editable form (its form fields carry the `txt####` / `chk####` names the app targets).
+- The checklist form embedded in the app is MSC-CKS-00009 Rev 3 (editable form fields are preserved in the output). To swap in a new revision, re-embed its base64 in `CHECKLIST_B64` inside `index.html`.
 - The engine matches text, not meaning: expect some flagged items on plans that use unusual wording — those flags are the "go check this" list, not final findings.
