@@ -1,11 +1,11 @@
-# ISPS Checklist Reviewer — Substantive SSP Review
+# ISPS Checklist Reviewer — Standalone SSP Review
 
-A single-file web app that reads a vessel's **Ship Security Plan (SSP, PDF)** — and the **SSA** when it is a separate document — maps the plan's structure, reviews every ISPS Code requirement in the **MSC-CKS-00009 Rev 3 checklist** substantively, and returns:
+A single-file web app that reads a vessel's **Ship Security Plan (SSP, PDF)** — and the **SSA** when it is a separate document — maps the plan's structure, cross-references every ISPS Code requirement in the **MSC-CKS-00009 Rev 3 checklist** against the plan's own text, and returns:
 
-1. the **completed checklist (.docx)** — Yes / No / N/A ticked, with the specific SSP/SSA chapter/section/page in the *SSP Doc Reference* column and a documented basis appended to every "No" (as the checklist footnote requires), and
-2. a **Gaps & Observations summary (.docx)** — overall impression, each "No" with its basis, N/A items with reasons, and recommendations for the auditor.
+1. the **completed checklist (.docx)** — Yes / No / N/A ticked, with the located SSP/SSA section and page in the *SSP Doc Reference* column and a documented basis for every "No", and
+2. a **Gaps & Observations summary (.docx)** — the flagged gaps, N/A items with reasons, and the review tallies.
 
-Everything runs **in the browser**. The plan is parsed locally; when a Claude API key is provided, the review itself is performed by the Anthropic API (the plan text is sent only to `api.anthropic.com`). Supabase is optional and only used to archive the outputs.
+**Fully standalone:** everything runs inside the browser. No account, no API key, no billing, no server — the plan never leaves the device. The only network use is the first-load CDN libraries (pdf.js, JSZip, fonts); after that it works offline.
 
 ---
 
@@ -27,62 +27,46 @@ At run time the page needs:
 ## How the review works
 
 ### 1. Structure mapping
-The PDF is extracted page by page and headings are detected (SECTION / CHAPTER / PART / APPENDIX / ANNEX, plus numbered headings like `2.10 Records`). Table-of-contents duplicates are superseded by the body headings, so every entry carries the real page number. The resulting document map is shown in the results panel and given to the model as an outline.
+The PDF is extracted page by page and headings are detected (SECTION / CHAPTER / PART / APPENDIX / ANNEX, plus numbered headings like `2.10 Records`). Table-of-contents duplicates are superseded by body headings, so every entry carries the real page number. The document map is shown in the results panel.
 
-### 2. Substantive item-by-item review (AI mode)
-With an **Anthropic API key** entered in the *Analysis engine* panel, the app sends the full plan text (with page markers) as cached context and reviews the checklist in batches of 50 items (~7 API calls total). For each item the model must:
+### 2. Evidence-based cross-reference
+For every checklist item the engine extracts the question's distinctive terms and searches the actual plan text for them:
 
-- locate and read the plan provision(s) that respond to the ISPS requirement — matching words alone are not accepted; measures must be **real, ship-specific and workable** (e.g. security level 2 access-control measures must be concrete measures for *this* ship, not boilerplate restating the Code);
-- answer **Yes** only when the intent of the provision is genuinely implemented;
-- answer **No** when the requirement is omitted, contradicted, or covered only by boilerplate — always with a **rationale**, which is written into the reference cell (`… — NO: <basis>`) so the documented basis required by the checklist footnote travels with the form;
-- answer **N/A** only when the requirement genuinely does not apply to the vessel/operations, with a brief reason;
-- cite the **chapter/section + page** it relied on (e.g. `SSP §4.4 Access Watch & Pass System, p.41`), or `Not found in SSP`.
+- **Found with good coverage** → **Yes**, with the real location where the evidence sits — nearest detected heading plus page, e.g. `SSP §4.4 Access Watch & Pass System, p.41`.
+- **Found only partially** → **Yes** with the location suffixed **"— verify"**, telling the auditor to confirm that section really implements the requirement.
+- **Not found at all** → **No**, with the basis written into the reference cell: *"no provision matching this requirement was found in the document text — verify manually (expected at §…)"*. Gaps surface as findings instead of being silently ticked Yes.
+- Fixed applicability rules handle known cases (ro-ro/vehicle items, electronic-SSP items, the 5-year records item, etc.) as **N/A** or **No** with a reason.
+- SSA / on-scene-survey items are searched in the separate SSA document when one is uploaded.
 
-The default model is **Claude Opus 4.8** (most thorough); **Claude Sonnet 5** is available as a faster option. Requests use adaptive thinking, structured JSON output, streaming, and 1-hour prompt caching of the plan text so subsequent batches are cheap. The key can optionally be remembered in `localStorage` on the device.
+**Honest limitation:** a text search can confirm *where* a topic is treated and expose topics that are *absent*, but it cannot judge whether the written measures are substantively adequate and ship-specific. Every output is labelled accordingly — the checklist is a documented draft; the auditor confirms substance against the plan and signs.
 
-### 2b. Built-in AI — no key prompt for users (optional relay)
-
-A Claude API key must exist *somewhere*, because Anthropic bills per token — and a key must **never** be pasted into `index.html`, since the page is public and anyone could steal it. To let people use AI review without entering a key, deploy the included relay, which keeps the key server-side:
-
-1. Create a free project at https://supabase.com (or reuse the one from the archive feature).
-2. Deploy the function in `supabase/functions/claude-proxy/` and set the secrets:
-   ```bash
-   supabase functions deploy claude-proxy --no-verify-jwt
-   supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
-   supabase secrets set ALLOWED_ORIGIN=https://<user>.github.io   # recommended
-   ```
-3. In `index.html`, set `CLAUDE_PROXY_URL = "https://<project-ref>.supabase.co/functions/v1/claude-proxy"` and redeploy.
-
-The dashboard then defaults to AI mode ("AI substantive review — built-in") with the key field empty; a key typed into the page still overrides the relay. **Cost warning:** every visitor's reviews are billed to the relay's key — keep `ALLOWED_ORIGIN` set, watch usage in the Anthropic console, and set a spend limit there.
-
-### 3. Keyword fallback (no API key)
-Without a key the app falls back to the original keyword cross-reference table (enriched with detected page numbers). This locates the *likely* section for each requirement but does **not** judge substance — the result panel and summary are labelled accordingly and the auditor must verify manually.
-
-### 4. SEC notation — explicit confirmation
+### 3. SEC notation — explicit confirmation
 The "Additional Requirements for **SEC** Notation" section also requires the **Company Security Plan (CSP)**, so the app **forces an explicit Yes/No answer** before a review can run:
 
 - **No** — every item in that section is set to N/A and its *SSP Doc Reference* cell is written as **"NA"**.
-- **Yes** — those items are assessed against the provided documents; if the CSP itself is not among them, the model says so in the rationale (e.g. the record-retention item: SSP retains records 2 years where ABS Guide 4/6.2(e) requires 5 → "No" with basis).
+- **Yes** — those items are cross-referenced too; the CSP-specific ones are flagged for the company to supply the CSP.
 
-### 5. Outputs
-- `"<Vessel>_ISPS_Checklist_Completed.docx"` — the same MSC-CKS-00009 form, filled in place (checkbox and text form fields keep their names, so the output stays editable).
-- `"<Vessel>_ISPS_Review_Summary.docx"` — the gaps & observations summary (also shown on screen, together with the "No" findings, the N/A list and the document map).
+### 4. Outputs
+- `"<Vessel>_ISPS_Checklist_Completed.docx"` — the same MSC-CKS-00009 form, filled in place (all form fields keep their names, so the output stays editable).
+- `"<Vessel>_ISPS_Review_Summary.docx"` — gaps & observations (also shown on screen with the "No" findings, N/A list and document map).
+
+Per the checklist footnote, every "No" must be closed out with the company's documented evidence, attached with the auditor's acceptance.
 
 ---
 
 ## Deploy on GitHub Pages (free)
 
-1. Create a repository and upload `index.html` to the root.
-2. **Settings → Pages** → *Deploy from a branch* → `main` / root → Save.
-3. The app is live at `https://<user>.github.io/<repo>/` about a minute later.
+1. Upload `index.html` to a repository.
+2. **Settings → Pages** → *Deploy from a branch* → `main` / root → Save (or keep the included `.github/workflows/pages.yml`, which deploys automatically on every push).
+3. Live at `https://<user>.github.io/<repo>/` about a minute later.
 
-To run locally, serve the folder (e.g. `python -m http.server 8741`) and open `http://localhost:8741` — opening the file directly with `file://` also works for the UI, but a local server is more reliable.
+To run locally, serve the folder (e.g. `python -m http.server 8741`) and open `http://localhost:8741`.
 
 ---
 
 ## Optional: Supabase archive
 
-Same as before: create a public bucket `isps-files`, set `SUPABASE_URL` / `SUPABASE_ANON_KEY` at the top of the script, and (optionally) create the `isps_audits` table:
+Create a public bucket `isps-files`, set `SUPABASE_URL` / `SUPABASE_ANON_KEY` at the top of the script, and (optionally) create the `isps_audits` table:
 
 ```sql
 create table if not exists isps_audits (
@@ -103,9 +87,7 @@ create policy "anon insert" on isps_audits for insert to anon with check (true);
 create policy "anon upload" on storage.objects for insert to anon with check (bucket_id = 'isps-files');
 ```
 
-Each run then archives the SSP, the completed checklist **and the summary** to `isps-files/<vessel>/…` and logs a row.
-
-> The anon key is public by design; for production put the app behind Supabase Auth.
+Each run then archives the SSP, the completed checklist and the summary to `isps-files/<vessel>/…` and logs a row.
 
 ---
 
@@ -113,6 +95,4 @@ Each run then archives the SSP, the completed checklist **and the summary** to `
 
 - PDF text extraction needs a **text-based** SSP (not a scanned image). Scanned plans need OCR first — the app detects this and refuses with a clear message.
 - The checklist template must be the MSC-CKS-00009 editable form (its form fields carry the `txt####` / `chk####` names the app targets).
-- AI review cost: ~7 calls per run with the full plan as context; prompt caching keeps repeat batches at ~10 % of the input price. A typical 80-page SSP reviews for a few dollars on Opus 4.8.
-- The AI's answers are a **draft for the auditor**: every "No" must still be closed out with the company's documented evidence per the checklist footnote, and the auditor signs the form.
-- No server is required. Works without the optional Supabase backup; the first load needs the CDN libraries (pdf.js, JSZip, supabase-js, Google Fonts).
+- The engine matches text, not meaning: expect some flagged items on plans that use unusual wording — those flags are the "go check this" list, not final findings.

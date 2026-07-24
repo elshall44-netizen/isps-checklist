@@ -276,30 +276,13 @@
     </label>
   </div>
 
-  <!-- AI analysis panel -->
+  <!-- Analysis engine panel -->
   <div class="ai-panel">
     <div class="head">
       <h4>Analysis engine</h4>
-      <span class="mode-chip" id="mode-chip">Keyword fallback</span>
+      <span class="mode-chip ai" id="mode-chip">Standalone · runs offline</span>
     </div>
-    <p class="sub">Every checklist item is judged substantively against the full plan text — checking that measures are real, ship-specific provisions rather than boilerplate — and each answer carries a chapter/section/page reference plus a documented basis for any "No". If the site operator has configured the built-in relay, AI review runs by default and the key field can stay empty; a key entered here overrides the relay. With neither, the tool falls back to keyword cross-referencing, which the auditor must verify manually.</p>
-    <div class="ai-grid">
-      <div class="ai-field">
-        <label for="ai-key">Anthropic API key</label>
-        <input type="password" id="ai-key" placeholder="sk-ant-…" autocomplete="off" spellcheck="false" />
-      </div>
-      <div class="ai-field">
-        <label for="ai-model">Model</label>
-        <select id="ai-model">
-          <option value="claude-opus-4-8" selected>Claude Opus 4.8 — most thorough</option>
-          <option value="claude-sonnet-5">Claude Sonnet 5 — faster</option>
-        </select>
-      </div>
-    </div>
-    <div class="ai-foot">
-      <label class="remember"><input type="checkbox" id="ai-remember" /> Remember key on this device</label>
-      <div class="note">The key stays in your browser and is sent only to api.anthropic.com. A full review makes ~7 API calls with the plan text as cached context.</div>
-    </div>
+    <p class="sub">Everything runs inside your browser — no account, no API, no billing, and the plan never leaves this device. For every checklist item the engine searches the actual plan text for evidence of the requirement: where it finds it, the answer is Yes with the real section and page it located; where it cannot find it, the item is flagged <b style="color:#c7d8e2">No — not located, verify</b> with the expected location, so gaps surface instead of being silently ticked Yes. The result is a documented draft — the auditor confirms substance against the plan and signs.</p>
   </div>
 
   <!-- SEC notation toggle -->
@@ -375,7 +358,7 @@
     The app works fully without it — files just won't be archived to the cloud.
   </div>
 
-  <footer>Runs in your browser · ISPS Code Part A &amp; B + ABS “SEC” · plan text is parsed locally · AI review via the Anthropic API</footer>
+  <footer>Runs entirely in your browser · ISPS Code Part A &amp; B + ABS “SEC” · no account, no API, the plan never leaves this device</footer>
 </div>
 
 <script>
@@ -386,14 +369,6 @@ const SUPABASE_URL = "";      // e.g. https://xxxx.supabase.co
 const SUPABASE_ANON_KEY = ""; // your project's anon public key
 const BUCKET = "isps-files";
 const TABLE  = "isps_audits";
-
-/* Optional: a server-side relay that holds the Anthropic API key, so people
-   using the page never have to enter one — AI review then runs by default.
-   Deploy supabase/functions/claude-proxy (see README) and put its URL here,
-   e.g. "https://xxxx.supabase.co/functions/v1/claude-proxy".
-   NEVER paste an Anthropic API key directly into this file: the page is
-   public and anyone could steal the key. */
-const CLAUDE_PROXY_URL = "";
 
 let sb = null;
 if (SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase) {
@@ -410,7 +385,7 @@ if (window.pdfjsLib) {
 /* ============================================================
    2) STATE + WIRING
    ============================================================ */
-const state = { sspFile:null, chkFile:null, ssaFile:null, sec:null, apiKey:'', model:'claude-opus-4-8' };
+const state = { sspFile:null, chkFile:null, ssaFile:null, sec:null };
 const $ = id => document.getElementById(id);
 
 function wireSlot(slotId, inputId, nameId, onFile){
@@ -433,49 +408,12 @@ $('sec-seg').addEventListener('click', e=>{
   refresh();
 });
 
-/* --- AI panel wiring (key kept in browser; optional localStorage) --- */
-const LS = { key:'isps_ai_key', model:'isps_ai_model', rem:'isps_ai_remember' };
-function initAi(){
-  try{
-    if(localStorage.getItem(LS.rem)==='1'){
-      $('ai-remember').checked = true;
-      state.apiKey = localStorage.getItem(LS.key) || '';
-      $('ai-key').value = state.apiKey;
-    }
-    const m = localStorage.getItem(LS.model);
-    if(m){ state.model = m; $('ai-model').value = m; }
-  }catch(_){}
-  updateModeChip();
-}
-function persistAi(){
-  try{
-    if($('ai-remember').checked){
-      localStorage.setItem(LS.rem,'1');
-      localStorage.setItem(LS.key, state.apiKey);
-      localStorage.setItem(LS.model, state.model);
-    } else {
-      localStorage.setItem(LS.rem,'0');
-      localStorage.removeItem(LS.key);
-    }
-  }catch(_){}
-}
-$('ai-key').addEventListener('input', e=>{ state.apiKey=e.target.value.trim(); persistAi(); updateModeChip(); refresh(); });
-$('ai-model').addEventListener('change', e=>{ state.model=e.target.value; persistAi(); });
-$('ai-remember').addEventListener('change', persistAi);
-function aiOn(){ return !!(state.apiKey || CLAUDE_PROXY_URL); }
-function updateModeChip(){
-  const c=$('mode-chip');
-  if(state.apiKey){ c.textContent='AI substantive review'; c.classList.add('ai'); }
-  else if(CLAUDE_PROXY_URL){ c.textContent='AI substantive review — built-in'; c.classList.add('ai'); }
-  else { c.textContent='Keyword fallback'; c.classList.remove('ai'); }
-}
-
 function refresh(){
   const ready = state.sspFile && state.chkFile && (state.sec==='yes' || state.sec==='no');
   $('gen').disabled = !ready;
   if(/\b(ok|err)\b/.test($('status').className)) return;   // keep a final Done/error message on screen
   if(state.sspFile && state.chkFile && !state.sec) setStatus('Answer the SEC-notation question to continue.');
-  else if(ready) setStatus(aiOn() ? 'Ready — AI substantive review with '+state.model+'.' : 'Ready — no API key, keyword fallback will be used.');
+  else if(ready) setStatus('Ready — standalone review, runs entirely in this browser.');
 }
 function setStatus(msg, cls=''){ const s=$('status'); s.textContent=msg; s.className='status '+cls; }
 function setProgress(frac){
@@ -613,25 +551,6 @@ function ssaRef(q){
 const NA_KW = [/car carriers, ro-ro/i, /vehicles to be loaded on board car/i, /vehicles destined to be loaded/i];
 const isCspRow = r => (r>=368 && r<=381);   // Section 3 — ABS "SEC" / CSP block
 
-function decideFallback(item, secYes){
-  const q=item.q, r=item.row;
-  if(item.section===1){ return {ref:ssaRef(q), ans:'yes', why:''}; }
-  const ref = sspRef(q);
-  if(isCspRow(r)){
-    if(!secYes) return {ref:"NA", ans:'na', why:'SEC notation not requested'};
-    if(/kept for at least 5 years/i.test(q)) return {ref:"§2.10 Records", ans:'no', why:"SSP states 2-year retention; ABS Guide 4/6.2(e) requires 5 years"};
-    if(r===380) return {ref:"§2.8 Internal Security Auditing", ans:'yes', why:''};
-    if(/does the company have a company security plan/i.test(q)) return {ref, ans:'na', why:'CSP is a separate company document, not part of the SSP'};
-    return {ref, ans:'yes', why:''};
-  }
-  for(const re of NA_KW){ if(re.test(q)) return {ref, ans:'na', why:'ro-ro / vehicle provisions not applicable to this vessel'}; }
-  if(/kept in an electronic format/i.test(q)) return {ref:"§1.4", ans:'na', why:'SSP issued as paper copy'};
-  if(/off-site cargo operations/i.test(q)) return {ref:"§4.8", ans:'na', why:'no routine off-site cargo operations'};
-  if(/automatic intrusion detection devices activate/i.test(q)) return {ref:"§3.10", ans:'na', why:'no automatic intrusion detection devices fitted'};
-  if(/records must be kept for at least 5 years/i.test(q)) return {ref:"§2.10 Records", ans:'no', why:"SSP retention period (2 years) conflicts with the 5-year requirement"};
-  return {ref, ans:'yes', why:''};
-}
-
 /* append detected page numbers to §x.y references */
 function withPages(ref, docMap){
   return ref.replace(/§(\d+(?:\.\d+)*)/g, (m,id)=>{
@@ -641,204 +560,102 @@ function withPages(ref, docMap){
 }
 
 /* ============================================================
-   6) CLAUDE AI ENGINE — substantive per-item review
+   6) EVIDENCE ENGINE — standalone, offline cross-reference.
+   For each checklist item the actual plan text is searched for the
+   question's distinctive terms. Found → Yes with the real section/page.
+   Not found → flagged "No — not located, verify" so gaps surface
+   instead of being silently ticked Yes.
    ============================================================ */
-const BATCH_SIZE = 50;
+const STOP = new Set(('the,a,an,and,or,of,to,in,on,for,by,with,at,from,as,is,are,be,been,was,were,does,do,did,'+
+ 'done,has,have,had,will,shall,should,would,can,could,may,might,must,not,no,yes,if,then,than,that,this,these,'+
+ 'those,it,its,their,there,which,who,whom,whose,when,where,how,what,why,all,any,each,every,other,into,onto,'+
+ 'upon,out,up,down,over,under,between,within,without,during,before,after,while,being,also,such,etc,'+
+ 'ship,ships,shipboard,vessel,ssp,ssa,security,plan,code,isps,part,section,measures,measure,procedures,procedure,'+
+ 'address,addressed,addresses,include,included,including,identification,identify,identified,establish,established,'+
+ 'ensure,ensuring,ensures,required,requirements,requirement,following,carried,carry,board,onboard,company,abs,guide,'+
+ 'per,appropriate,relevant,regard,least,used,use,using,place,taken,take,made,make,provide,provided,provides,'+
+ 'detail,details,indicate,indicates,specify,specified,activities,activity,persons,personnel,areas,area,'+
+ 'levels,level,items,item,against,accordance,applicable,consider,considered,considers').split(','));
 
-const SYS_PROMPT = `You are a marine security auditor completing the ABS checklist MSC-CKS-00009 Rev 3 ("Ship Security Plan Review Checklist — ISPS Code & ABS Guide"). You are given the full text of a vessel's approved Ship Security Plan (SSP) — and, when provided, a separate Ship Security Assessment (SSA) — with page markers, plus an auto-detected outline of the document structure.
-
-For each checklist item you must judge SUBSTANTIVELY whether the plan actually addresses the intent of the cited ISPS Code / ABS Guide provision — not merely whether matching words appear:
-
-- Locate the provision(s) of the plan that respond to the requirement and read them. The measures must be real, ship-specific and workable. Generic text that restates the Code without saying what THIS ship actually does (e.g. "additional measures will be applied at security level 2" with no concrete measures) does NOT satisfy the requirement.
-- "yes" — the plan genuinely satisfies the requirement, with substantive, ship-specific provisions.
-- "no" — the plan omits the requirement, conflicts with it, or covers it only with vague boilerplate that fails to implement the intent. Every "no" MUST carry a rationale: the auditor is required to document the basis for the finding (the checklist footnote requires documented evidence for each "No").
-- "na" — the requirement genuinely does not apply to this vessel or its operations (e.g. ro-ro vehicle provisions on a vessel that carries no vehicles; equipment-dependent items where the equipment is not fitted AND the plan says so). Give a brief reason.
-
-Reference column ("ref"): cite the specific place in the SSP/SSA you relied on — section number and heading plus page, e.g. "SSP §4.4 Access Watch & Pass System, p.41" or "SSA App.6 On-Scene Survey Report, p.3". Cite the SSA for SSA/on-scene-survey items. If nothing relevant exists in the documents, write "Not found in SSP". Keep ref under 120 characters and rationale under 300 characters.
-
-Items whose header notes the ABS "SEC" notation reference the Company Security Plan (CSP). If the CSP itself is not among the provided documents, judge from what the SSP contains and say so in the rationale.
-
-Return a result for EVERY row you are given.`;
-
-const RESULT_SCHEMA = {
-  type:"object",
-  properties:{
-    results:{
-      type:"array",
-      items:{
-        type:"object",
-        properties:{
-          row:{type:"integer", description:"the row id exactly as given"},
-          answer:{type:"string", enum:["yes","no","na"]},
-          ref:{type:"string", description:"SSP/SSA section + page reference"},
-          rationale:{type:"string", description:"basis for no/na; empty string for yes"}
-        },
-        required:["row","answer","ref","rationale"],
-        additionalProperties:false
-      }
-    }
-  },
-  required:["results"],
-  additionalProperties:false
-};
-
-function buildDocContext(docMap, sspPages, ssaPages){
-  let s = "AUTO-DETECTED DOCUMENT OUTLINE (id — title — page):\n" + docMapText(docMap);
-  s += "\n\n===== SHIP SECURITY PLAN — FULL TEXT WITH PAGE MARKERS =====\n";
-  sspPages.forEach((t,i)=>{ s += `\n[SSP PAGE ${i+1}]\n${t}\n`; });
-  if(ssaPages && ssaPages.length){
-    s += "\n\n===== SHIP SECURITY ASSESSMENT (separate document) =====\n";
-    ssaPages.forEach((t,i)=>{ s += `\n[SSA PAGE ${i+1}]\n${t}\n`; });
+function keyTerms(q){
+  const cleaned = q.replace(/\[[^\]]*\]/g,' ').toLowerCase().replace(/[^a-z0-9\s\-]/g,' ');
+  const out=[]; const seen=new Set();
+  for(const w of cleaned.split(/\s+/)){
+    if(w.length<4 || STOP.has(w) || seen.has(w)) continue;
+    seen.add(w); out.push(w);
   }
-  return s;
+  return out;
 }
 
-async function callClaude(payload){
-  let lastErr = null;
-  for(let attempt=0; attempt<3; attempt++){
-    const useProxy = CLAUDE_PROXY_URL && !state.apiKey;   // a user-entered key overrides the relay
-    const endpoint = useProxy ? CLAUDE_PROXY_URL : 'https://api.anthropic.com/v1/messages';
-    const headers = {'content-type':'application/json'};
-    if(!useProxy){
-      headers['x-api-key'] = state.apiKey;
-      headers['anthropic-version'] = '2023-06-01';
-      headers['anthropic-dangerous-direct-browser-access'] = 'true';
+/* nearest detected heading at or above a page */
+function nearestHeading(docMap, page){
+  let best=null;
+  for(const e of docMap){ if(e.page<=page) best=e; else break; }
+  return best;
+}
+function headingLabel(e, page, prefix){
+  if(!e) return `${prefix} p.${page}`;
+  const id = /^\d/.test(e.id) ? '§'+e.id : e.id;
+  return `${prefix} ${id}${e.title? ' '+e.title.slice(0,42):''}, p.${page}`;
+}
+
+/* search a document (array of lowercased pages) for the item's terms */
+function searchDoc(terms, lowerPages){
+  let bestPage=-1, bestScore=0; const found=new Set();
+  lowerPages.forEach((txt,i)=>{
+    let score=0;
+    for(const t of terms){
+      if(txt.includes(t)){ found.add(t); score += t.length; }
     }
-    let res;
-    try{
-      res = await fetch(endpoint, {
-        method:'POST',
-        headers,
-        body: JSON.stringify(payload)
-      });
-    }catch(netErr){
-      lastErr = new Error('Network error reaching api.anthropic.com — check your connection.');
-      await new Promise(r=>setTimeout(r, 1500*(attempt+1)));
-      continue;
-    }
-    if(!res.ok){
-      const retryable = res.status===429 || res.status>=500;
-      const body = await res.json().catch(()=>null);
-      const msg = (body && body.error && body.error.message) || res.statusText;
-      if(res.status===401) throw new Error('Claude API: invalid API key (401).');
-      if(retryable && attempt<2){
-        lastErr = new Error(`Claude API ${res.status}: ${msg}`);
-        await new Promise(r=>setTimeout(r, 2500*(attempt+1)));
-        continue;
-      }
-      throw new Error(`Claude API ${res.status}: ${msg}`);
-    }
-    // parse the SSE stream, accumulating text deltas
-    const reader = res.body.getReader();
-    const dec = new TextDecoder();
-    let buf='', text='', stop=null;
-    while(true){
-      const {done, value} = await reader.read();
-      if(done) break;
-      buf += dec.decode(value, {stream:true});
-      let idx;
-      while((idx = buf.indexOf('\n')) >= 0){
-        const line = buf.slice(0, idx).trim();
-        buf = buf.slice(idx+1);
-        if(!line.startsWith('data:')) continue;
-        const data = line.slice(5).trim();
-        if(!data) continue;
-        let ev; try{ ev = JSON.parse(data); }catch(_){ continue; }
-        if(ev.type==='content_block_delta' && ev.delta && ev.delta.type==='text_delta') text += ev.delta.text;
-        else if(ev.type==='message_delta' && ev.delta && ev.delta.stop_reason) stop = ev.delta.stop_reason;
-        else if(ev.type==='error') throw new Error('Claude API stream error: '+((ev.error&&ev.error.message)||'unknown'));
-      }
-    }
-    if(stop==='max_tokens') throw new Error('The model response was truncated (max_tokens). Retry, or use a smaller batch.');
-    if(stop==='refusal') throw new Error('The model declined this request.');
-    return text;
+    if(score>bestScore){ bestScore=score; bestPage=i+1; }
+  });
+  return {found, bestPage, coverage: terms.length ? found.size/terms.length : 0};
+}
+
+function decideLocal(item, secYes, ctx){
+  const q=item.q, r=item.row;
+
+  /* fixed applicability rules first */
+  if(isCspRow(r)){
+    if(!secYes) return {ref:'NA', ans:'na', why:''};
+    if(/kept for at least 5 years/i.test(q)) return {ref:withPages('§2.10 Records',ctx.docMap), ans:'no', why:'confirm retention period — ABS Guide 4/6.2(e) requires 5 years and SSPs commonly state 2'};
+    if(/does the company have a company security plan/i.test(q)) return {ref:'Not found in SSP', ans:'no', why:'the CSP is a separate company document — request it from the company'};
   }
-  throw lastErr || new Error('Claude API: request failed.');
-}
+  for(const re of NA_KW){ if(re.test(q)) return {ref:sspRef(q), ans:'na', why:'ro-ro / vehicle provisions not applicable to this vessel'}; }
+  if(/kept in an electronic format/i.test(q)) return {ref:'§1.4', ans:'na', why:'applies only if the SSP is kept electronically — confirm'};
+  if(/off-site cargo operations/i.test(q)) return {ref:'§4.8', ans:'na', why:'applies only if off-site cargo operations occur'};
+  if(/automatic intrusion detection devices activate/i.test(q)) return {ref:'§3.10', ans:'na', why:'applies only if automatic intrusion detection is fitted'};
+  if(/records must be kept for at least 5 years/i.test(q)) return {ref:withPages('§2.10 Records',ctx.docMap), ans:'no', why:'confirm retention period in the plan — 5 years required'};
 
-function parseResultJson(text){
-  try{ return JSON.parse(text); }
-  catch(_){
-    const m = text.match(/\{[\s\S]*\}/);
-    if(m){ try{ return JSON.parse(m[0]); }catch(_2){} }
-    throw new Error('Could not parse the model response as JSON.');
+  /* evidence search: SSA items look in the separate SSA document when provided */
+  const isSsa  = item.section===1;
+  const pages  = (isSsa && ctx.ssaLower) ? ctx.ssaLower : ctx.sspLower;
+  const map    = (isSsa && ctx.ssaLower) ? ctx.ssaMap   : ctx.docMap;
+  const prefix = (isSsa && ctx.ssaLower) ? 'SSA' : 'SSP';
+
+  const terms = keyTerms(q);
+  const hit = searchDoc(terms, pages);
+  const strong  = hit.found.size>=2 && hit.coverage>=0.34;
+  const partial = !strong && hit.found.size>=1 && hit.coverage>=0.2;
+
+  if(strong || (terms.length<=2 && hit.found.size>=1)){
+    return {ref: headingLabel(nearestHeading(map, hit.bestPage), hit.bestPage, prefix), ans:'yes', why:''};
   }
-}
-
-async function aiAnalyze(items, docContext, secYes, onProgress){
-  const decisions = {};
-  const system = [
-    {type:'text', text: SYS_PROMPT},
-    {type:'text', text: docContext, cache_control:{type:'ephemeral', ttl:'1h'}}
-  ];
-  const batches = [];
-  for(let i=0; i<items.length; i+=BATCH_SIZE) batches.push(items.slice(i, i+BATCH_SIZE));
-
-  for(let bi=0; bi<batches.length; bi++){
-    const batch = batches[bi];
-    onProgress(bi, batches.length, `Reviewing items ${batch[0].row}–${batch[batch.length-1].row}…`);
-    const itemList = batch.map(it=>({
-      row: it.row,
-      section: it.section===1 ? 'SSA / On-Scene Survey' : (isCspRow(it.row) ? 'ABS SEC notation (CSP)' : 'Ship Security Plan'),
-      question: it.q
-    }));
-    const payload = {
-      model: state.model,
-      max_tokens: 64000,
-      stream: true,
-      thinking: {type:'adaptive'},
-      system,
-      messages: [{role:'user', content:
-        `Assess the following checklist items against the provided SSP${state.ssaFile?' and SSA':''}. `+
-        `Return JSON {"results":[...]} with exactly one entry per row.\n\n`+
-        JSON.stringify(itemList, null, 1)
-      }],
-      output_config: {format:{type:'json_schema', schema: RESULT_SCHEMA}}
-    };
-    const text = await callClaude(payload);
-    const parsed = parseResultJson(text);
-    for(const r of (parsed.results||[])){
-      if(typeof r.row === 'number') decisions[r.row] = {ans:r.answer, ref:r.ref||'', why:r.rationale||''};
-    }
-    onProgress(bi+1, batches.length, `Batch ${bi+1}/${batches.length} done.`);
+  if(partial){
+    return {ref: headingLabel(nearestHeading(map, hit.bestPage), hit.bestPage, prefix)+' — verify', ans:'yes', why:''};
   }
-  return decisions;
+  /* nothing located → surface it as a gap instead of silently ticking Yes */
+  const expected = (isSsa ? ssaRef(q) : sspRef(q)).split(';')[0];
+  return {ref:'Not located in '+((isSsa&&ctx.ssaLower)?'SSA':'SSP')+' text', ans:'no',
+          why:'no provision matching this requirement was found in the document text — verify manually (expected at '+expected+')'};
 }
 
-async function aiSummary(docContext, vessel, secYes, findings, tally){
-  const system = [
-    {type:'text', text: SYS_PROMPT},
-    {type:'text', text: docContext, cache_control:{type:'ephemeral', ttl:'1h'}}
-  ];
-  const findingLines = findings.map(f=>`Row ${f.row} [${f.ans.toUpperCase()}] ${f.q}\n  ref: ${f.ref}\n  basis: ${f.why||'-'}`).join('\n');
-  const payload = {
-    model: state.model,
-    max_tokens: 32000,
-    stream: true,
-    thinking: {type:'adaptive'},
-    system,
-    messages: [{role:'user', content:
-`The item-by-item review is complete for ${vessel.name||'the vessel'} (${vessel.classId||'class n/a'}). Tally: ${tally.yes} Yes, ${tally.no} No, ${tally.na} N/A. SEC notation: ${secYes?'requested':'not requested'}.
-
-Findings ("No" and "N/A" items):
-${findingLines || '(none)'}
-
-Write a short summary (max ~400 words, plain text, short section headers, no markdown symbols) for the reviewing auditor covering:
-1. Overall impression of the SSP — structure, coverage, and whether measures are ship-specific or generic.
-2. Gaps — each "No" finding with its documented basis and what evidence the company should provide.
-3. Not-applicable items — grouped briefly with the reason.
-4. Observations & recommendations — anything worth verifying on board or improving in the plan, including borderline items you marked "Yes" but found weak.`
-    }]
-  };
-  return (await callClaude(payload)).trim();
-}
-
-function localSummary(vessel, secYes, findings, tally, mode){
+function localSummary(vessel, secYes, findings, tally){
   const nos = findings.filter(f=>f.ans==='no');
   const nas = findings.filter(f=>f.ans==='na');
   let s = `SHIP SECURITY PLAN REVIEW — SUMMARY OF GAPS & OBSERVATIONS\n`;
   s += `Vessel: ${vessel.name||'n/a'}   Class/IMO: ${vessel.classId||'n/a'}   SEC notation: ${secYes?'Yes':'No'}\n`;
-  s += `Result: ${tally.yes} Yes · ${tally.no} No · ${tally.na} N/A   (engine: ${mode==='ai'?'AI substantive review':'keyword cross-reference — verify manually'})\n\n`;
+  s += `Result: ${tally.yes} Yes · ${tally.no} No · ${tally.na} N/A   (engine: standalone document cross-reference — the auditor verifies substance against the plan)\n\n`;
   s += `GAPS ("No" findings)\n`;
   s += nos.length ? nos.map(f=>`• Row ${f.row}: ${f.q}\n   Basis: ${f.why||'see reference'} [${f.ref}]`).join('\n') : '• None.';
   s += `\n\nNOT APPLICABLE\n`;
@@ -998,34 +815,17 @@ $('gen').addEventListener('click', async ()=>{
     const vessel = extractVessel(fullText);
     const secYes = state.sec==='yes';
 
-    /* 3. Decide every item */
-    let decisions = {}, mode = 'fallback', summaryText = '';
-    if(aiOn()){
-      mode = 'ai';
-      const docContext = buildDocContext(docMap, sspPages, ssaPages);
-      if(docContext.length > 3500000) throw new Error('The plan is too large for one review pass ('+Math.round(docContext.length/1e6)+' MB of text).');
-      // SEC off → don't spend API tokens on the CSP block, mark locally
-      const aiItems = ITEMS.filter(it => secYes || !isCspRow(it.row));
-      label('AI review…');
-      decisions = await aiAnalyze(aiItems, docContext, secYes, (done,total,msg)=>{
-        setProgress(done/(total+1));
-        setStatus(`AI substantive review — ${msg} (${done}/${total} batches)`);
-      });
-      if(!secYes) for(const it of ITEMS.filter(i=>isCspRow(i.row))) decisions[it.row]={ans:'na', ref:'NA', why:''};
-      // any rows the model failed to return → fallback so the checklist is complete
-      for(const it of ITEMS) if(!decisions[it.row]){
-        const d = decideFallback(it, secYes); d.ref = withPages(d.ref, docMap);
-        d.why = (d.why?d.why+'; ':'')+'auto cross-reference — verify manually';
-        decisions[it.row]=d;
-      }
-    } else {
-      label('Cross-referencing…');
-      setStatus('No API key — using keyword cross-referencing (verify results manually).');
-      for(const it of ITEMS){
-        const d = decideFallback(it, secYes);
-        d.ref = withPages(d.ref, docMap);
-        decisions[it.row]=d;
-      }
+    /* 3. Decide every item from the document's own text */
+    label('Cross-referencing…');
+    setStatus('Cross-referencing every checklist item against the plan text…');
+    const ctx = {
+      sspLower: sspPages.map(t=>t.toLowerCase()),
+      ssaLower: ssaPages ? ssaPages.map(t=>t.toLowerCase()) : null,
+      docMap, ssaMap
+    };
+    let decisions = {}, summaryText = '';
+    for(const it of ITEMS){
+      decisions[it.row] = decideLocal(it, secYes, ctx);
     }
 
     /* 4. Tally + findings */
@@ -1038,19 +838,7 @@ $('gen').addEventListener('click', async ()=>{
     }
 
     /* 5. Summary of gaps & observations */
-    if(mode==='ai'){
-      label('Writing summary…');
-      setStatus('Drafting the gaps & observations summary…');
-      setProgress(0.95);
-      try{
-        summaryText = await aiSummary(buildDocContext(docMap, sspPages, ssaPages), vessel, secYes, findings, tally);
-      }catch(e){
-        console.warn('AI summary failed, using local summary:', e);
-        summaryText = localSummary(vessel, secYes, findings, tally, mode);
-      }
-    } else {
-      summaryText = localSummary(vessel, secYes, findings, tally, mode);
-    }
+    summaryText = localSummary(vessel, secYes, findings, tally);
 
     /* 6. Build both documents */
     label('Writing checklist…');
@@ -1071,7 +859,7 @@ $('gen').addEventListener('click', async ()=>{
 
     $('res-vessel').textContent =
       (vessel.name||'Vessel')+'  ·  '+(vessel.classId||'class n/a')+'  ·  SEC: '+(secYes?'Yes':'No')+
-      '  ·  '+(mode==='ai' ? 'AI review ('+state.model+')' : 'keyword fallback — verify manually');
+      '  ·  standalone cross-reference — verify substance against the plan';
     $('t-yes').textContent=tally.yes; $('t-no').textContent=tally.no; $('t-na').textContent=tally.na;
     $('sum-text').textContent = summaryText;
     renderFindings(findings);
@@ -1131,7 +919,6 @@ function renderFindings(findings){
   $('fold-na').querySelector('summary').textContent = `Items marked N/A (${nas.length})`;
 }
 
-initAi();
 refresh();
 </script>
 </body>
