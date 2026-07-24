@@ -282,7 +282,7 @@
       <h4>Analysis engine</h4>
       <span class="mode-chip" id="mode-chip">Keyword fallback</span>
     </div>
-    <p class="sub">With a Claude API key, every checklist item is judged substantively against the full plan text — checking that measures are real, ship-specific provisions rather than boilerplate — and each answer carries a chapter/section/page reference plus a documented basis for any "No". Without a key, the tool falls back to keyword cross-referencing, which the auditor must verify manually.</p>
+    <p class="sub">Every checklist item is judged substantively against the full plan text — checking that measures are real, ship-specific provisions rather than boilerplate — and each answer carries a chapter/section/page reference plus a documented basis for any "No". If the site operator has configured the built-in relay, AI review runs by default and the key field can stay empty; a key entered here overrides the relay. With neither, the tool falls back to keyword cross-referencing, which the auditor must verify manually.</p>
     <div class="ai-grid">
       <div class="ai-field">
         <label for="ai-key">Anthropic API key</label>
@@ -387,6 +387,14 @@ const SUPABASE_ANON_KEY = ""; // your project's anon public key
 const BUCKET = "isps-files";
 const TABLE  = "isps_audits";
 
+/* Optional: a server-side relay that holds the Anthropic API key, so people
+   using the page never have to enter one — AI review then runs by default.
+   Deploy supabase/functions/claude-proxy (see README) and put its URL here,
+   e.g. "https://xxxx.supabase.co/functions/v1/claude-proxy".
+   NEVER paste an Anthropic API key directly into this file: the page is
+   public and anyone could steal the key. */
+const CLAUDE_PROXY_URL = "";
+
 let sb = null;
 if (SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase) {
   sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -454,9 +462,11 @@ function persistAi(){
 $('ai-key').addEventListener('input', e=>{ state.apiKey=e.target.value.trim(); persistAi(); updateModeChip(); refresh(); });
 $('ai-model').addEventListener('change', e=>{ state.model=e.target.value; persistAi(); });
 $('ai-remember').addEventListener('change', persistAi);
+function aiOn(){ return !!(state.apiKey || CLAUDE_PROXY_URL); }
 function updateModeChip(){
   const c=$('mode-chip');
   if(state.apiKey){ c.textContent='AI substantive review'; c.classList.add('ai'); }
+  else if(CLAUDE_PROXY_URL){ c.textContent='AI substantive review — built-in'; c.classList.add('ai'); }
   else { c.textContent='Keyword fallback'; c.classList.remove('ai'); }
 }
 
@@ -465,7 +475,7 @@ function refresh(){
   $('gen').disabled = !ready;
   if(/\b(ok|err)\b/.test($('status').className)) return;   // keep a final Done/error message on screen
   if(state.sspFile && state.chkFile && !state.sec) setStatus('Answer the SEC-notation question to continue.');
-  else if(ready) setStatus(state.apiKey ? 'Ready — AI substantive review with '+state.model+'.' : 'Ready — no API key, keyword fallback will be used.');
+  else if(ready) setStatus(aiOn() ? 'Ready — AI substantive review with '+state.model+'.' : 'Ready — no API key, keyword fallback will be used.');
 }
 function setStatus(msg, cls=''){ const s=$('status'); s.textContent=msg; s.className='status '+cls; }
 function setProgress(frac){
@@ -686,16 +696,19 @@ function buildDocContext(docMap, sspPages, ssaPages){
 async function callClaude(payload){
   let lastErr = null;
   for(let attempt=0; attempt<3; attempt++){
+    const useProxy = CLAUDE_PROXY_URL && !state.apiKey;   // a user-entered key overrides the relay
+    const endpoint = useProxy ? CLAUDE_PROXY_URL : 'https://api.anthropic.com/v1/messages';
+    const headers = {'content-type':'application/json'};
+    if(!useProxy){
+      headers['x-api-key'] = state.apiKey;
+      headers['anthropic-version'] = '2023-06-01';
+      headers['anthropic-dangerous-direct-browser-access'] = 'true';
+    }
     let res;
     try{
-      res = await fetch('https://api.anthropic.com/v1/messages', {
+      res = await fetch(endpoint, {
         method:'POST',
-        headers:{
-          'content-type':'application/json',
-          'x-api-key': state.apiKey,
-          'anthropic-version':'2023-06-01',
-          'anthropic-dangerous-direct-browser-access':'true'
-        },
+        headers,
         body: JSON.stringify(payload)
       });
     }catch(netErr){
@@ -987,7 +1000,7 @@ $('gen').addEventListener('click', async ()=>{
 
     /* 3. Decide every item */
     let decisions = {}, mode = 'fallback', summaryText = '';
-    if(state.apiKey){
+    if(aiOn()){
       mode = 'ai';
       const docContext = buildDocContext(docMap, sspPages, ssaPages);
       if(docContext.length > 3500000) throw new Error('The plan is too large for one review pass ('+Math.round(docContext.length/1e6)+' MB of text).');

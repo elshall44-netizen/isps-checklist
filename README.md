@@ -40,6 +40,21 @@ With an **Anthropic API key** entered in the *Analysis engine* panel, the app se
 
 The default model is **Claude Opus 4.8** (most thorough); **Claude Sonnet 5** is available as a faster option. Requests use adaptive thinking, structured JSON output, streaming, and 1-hour prompt caching of the plan text so subsequent batches are cheap. The key can optionally be remembered in `localStorage` on the device.
 
+### 2b. Built-in AI — no key prompt for users (optional relay)
+
+A Claude API key must exist *somewhere*, because Anthropic bills per token — and a key must **never** be pasted into `index.html`, since the page is public and anyone could steal it. To let people use AI review without entering a key, deploy the included relay, which keeps the key server-side:
+
+1. Create a free project at https://supabase.com (or reuse the one from the archive feature).
+2. Deploy the function in `supabase/functions/claude-proxy/` and set the secrets:
+   ```bash
+   supabase functions deploy claude-proxy --no-verify-jwt
+   supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
+   supabase secrets set ALLOWED_ORIGIN=https://<user>.github.io   # recommended
+   ```
+3. In `index.html`, set `CLAUDE_PROXY_URL = "https://<project-ref>.supabase.co/functions/v1/claude-proxy"` and redeploy.
+
+The dashboard then defaults to AI mode ("AI substantive review — built-in") with the key field empty; a key typed into the page still overrides the relay. **Cost warning:** every visitor's reviews are billed to the relay's key — keep `ALLOWED_ORIGIN` set, watch usage in the Anthropic console, and set a spend limit there.
+
 ### 3. Keyword fallback (no API key)
 Without a key the app falls back to the original keyword cross-reference table (enriched with detected page numbers). This locates the *likely* section for each requirement but does **not** judge substance — the result panel and summary are labelled accordingly and the auditor must verify manually.
 
