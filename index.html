@@ -75,8 +75,9 @@
   .hero p{color:#b9ccd3;font-size:16px;line-height:1.6;margin:18px 0 0;max-width:660px}
 
   /* ---------- Upload deck ---------- */
-  .deck{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:14px}
-  @media(max-width:640px){.deck{grid-template-columns:1fr}}
+  .deck{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:14px}
+  @media(max-width:980px){.deck{grid-template-columns:1fr 1fr}}
+  @media(max-width:560px){.deck{grid-template-columns:1fr}}
 
   .slot{
     position:relative;background:var(--paper);border-radius:var(--radius);
@@ -230,7 +231,7 @@
   <section class="hero">
     <div class="eyebrow">SSP → Substantive Cross-Referenced Review</div>
     <h2>Read the plan. <em>Judge every requirement.</em></h2>
-    <p>Drop in the vessel's Ship Security Plan — that's all that's needed: the blank MSC-CKS-00009 checklist is built into the app. The reviewer maps the plan's structure — chapters, sections, annexes — then goes item by item through the checklist. Section 1 items are referenced from the SSA, Section 2 items from the SSP. It returns the checklist with Yes / No / N&nbsp;/&nbsp;A ticked, section/page references filled, a documented basis for every "No", and a short summary of gaps and observations.</p>
+    <p>Drop in the vessel's Ship Security Plan — the blank MSC-CKS-00009 checklist is built into the app; the SSA, the Flag State Special Instructions (FSSI) and the CSP / other requirement documents are optional uploads that sharpen the review. The reviewer maps the plan's structure — chapters, sections, annexes — then goes item by item through the checklist. Section 1 items are referenced from the SSA, Section 2 items from the SSP. It returns the checklist with Yes / No / N&nbsp;/&nbsp;A ticked, section/page references filled, a documented basis for every "No", and a short summary of gaps and observations.</p>
   </section>
 
   <!-- Upload deck -->
@@ -262,6 +263,34 @@
       <p class="hint">Upload it <b>only when the SSA / on-scene survey is a separate document</b> (i.e. the SSP does not include it). Section 1 references then come exclusively from this file; Section 2 references always come from the SSP.</p>
       <div class="filename"><span class="dot"></span><span id="name-ssa"></span></div>
       <input type="file" id="file-ssa" accept="application/pdf,.pdf" />
+    </label>
+
+    <label class="slot" id="slot-fssi" for="file-fssi">
+      <span class="num">03</span>
+      <div class="icon-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#335572" stroke-width="1.5">
+          <path d="M5 21V4"/><path d="M5 4h13l-2.5 3.5L18 11H5"/>
+        </svg>
+      </div>
+      <div class="kind opt">PDF · optional</div>
+      <h3>Flag Instructions (FSSI)</h3>
+      <p class="hint">Flag State Special Instructions. When provided, each detected FSSI topic is cross-checked against the SSP and untraceable topics are listed as open items.</p>
+      <div class="filename"><span class="dot"></span><span id="name-fssi"></span></div>
+      <input type="file" id="file-fssi" accept="application/pdf,.pdf" />
+    </label>
+
+    <label class="slot" id="slot-csp" for="file-csp">
+      <span class="num">04</span>
+      <div class="icon-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#335572" stroke-width="1.5">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V4a2 2 0 0 0-2-2H6.5A2.5 2.5 0 0 0 4 4.5z"/><path d="M9 7h7M9 11h7"/>
+        </svg>
+      </div>
+      <div class="kind opt">PDF · optional</div>
+      <h3>CSP / Other Requirements</h3>
+      <p class="hint">Company Security Plan or other requirement documents. With SEC notation = Yes, the SEC-section items are referenced from this document with section and page.</p>
+      <div class="filename"><span class="dot"></span><span id="name-csp"></span></div>
+      <input type="file" id="file-csp" accept="application/pdf,.pdf" />
     </label>
   </div>
 
@@ -402,7 +431,7 @@ if (window.pdfjsLib) {
 /* ============================================================
    2) STATE + WIRING
    ============================================================ */
-const state = { sspFile:null, ssaFile:null, sec:null };
+const state = { sspFile:null, ssaFile:null, fssiFile:null, cspFile:null, sec:null };
 const $ = id => document.getElementById(id);
 
 /* The blank MSC-CKS-00009 Rev 3 editable checklist, embedded permanently
@@ -419,6 +448,8 @@ function wireSlot(slotId, inputId, nameId, onFile){
 }
 wireSlot('slot-ssp','file-ssp','name-ssp', f=>state.sspFile=f);
 wireSlot('slot-ssa','file-ssa','name-ssa', f=>state.ssaFile=f);
+wireSlot('slot-fssi','file-fssi','name-fssi', f=>state.fssiFile=f);
+wireSlot('slot-csp','file-csp','name-csp', f=>state.cspFile=f);
 
 $('sec-seg').addEventListener('click', e=>{
   const b=e.target.closest('button'); if(!b) return;
@@ -622,16 +653,17 @@ function headingLabel(e, page, prefix){
 /* search a document (array of lowercased pages) for the item's terms;
    fromPage (1-based) restricts the search to a page range */
 function searchDoc(terms, lowerPages, fromPage=1){
-  let bestPage=-1, bestScore=0; const found=new Set();
+  let bestPage=-1, bestScore=0, best2Page=-1, best2Score=0; const found=new Set();
   lowerPages.forEach((txt,i)=>{
     if(i+1 < fromPage) return;
     let score=0;
     for(const t of terms){
       if(txt.includes(t)){ found.add(t); score += t.length; }
     }
-    if(score>bestScore){ bestScore=score; bestPage=i+1; }
+    if(score>bestScore){ best2Score=bestScore; best2Page=bestPage; bestScore=score; bestPage=i+1; }
+    else if(score>best2Score){ best2Score=score; best2Page=i+1; }
   });
-  return {found, bestPage, coverage: terms.length ? found.size/terms.length : 0};
+  return {found, bestPage, bestScore, best2Page, best2Score, coverage: terms.length ? found.size/terms.length : 0};
 }
 
 /* locate where the SSA part begins inside an SSP that includes it */
@@ -651,8 +683,17 @@ function decideLocal(item, secYes, ctx){
   /* fixed applicability rules first */
   if(isCspRow(r)){
     if(!secYes) return {ref:'NA', ans:'na', why:''};
-    if(/kept for at least 5 years/i.test(q)) return {ref:withPages('§2.10 Records',ctx.docMap), ans:'no', why:'confirm retention period — ABS Guide 4/6.2(e) requires 5 years and SSPs commonly state 2'};
-    if(/does the company have a company security plan/i.test(q)) return {ref:'Not Evident', ans:'notevident', why:'the CSP is a separate company document — missing evidence; request it from the company'};
+    if(!ctx.cspLower){
+      if(/does the company have a company security plan/i.test(q)) return {ref:'Not Evident', ans:'notevident', why:'the CSP is a separate company document — missing evidence; upload it or request it from the company'};
+      if(/kept for at least 5 years/i.test(q)) return {ref:withPages('§2.10 Records',ctx.docMap), ans:'no', why:'confirm retention period — ABS Guide 4/6.2(e) requires 5 years and SSPs commonly state 2'};
+    } else {
+      if(/does the company have a company security plan/i.test(q)) return {ref:'CSP document provided ('+ctx.cspLower.length+' pages)', ans:'yes', why:''};
+      if(/kept for at least 5 years/i.test(q)){
+        let pg=-1; ctx.cspLower.forEach((t,i)=>{ if(pg<0 && /(5|five)\s*(\(5\)\s*)?years/.test(t)) pg=i+1; });
+        if(pg>0) return {ref: headingLabel(nearestHeading(ctx.cspMap, pg), pg, 'CSP'), ans:'yes', why:''};
+        return {ref:'Not Evident — not located in CSP text', ans:'notevident', why:'5-year records retention per ABS Guide 4/6.2(e) not located in the CSP — amendment or supporting evidence required'};
+      }
+    }
   }
   for(const re of NA_KW){ if(re.test(q)) return {ref:sspRef(q), ans:'na', why:'ro-ro / vehicle provisions not applicable to this vessel'}; }
   if(/kept in an electronic format/i.test(q)) return {ref:'§1.4', ans:'na', why:'applies only if the SSP is kept electronically — confirm'};
@@ -666,8 +707,11 @@ function decideLocal(item, secYes, ctx){
      - SSP only               → the SSA is included in the SSP; Section 1
        searches the SSA part of the plan (from the detected SSA heading on) */
   const isSsa = item.section===1;
+  const isCsp = isCspRow(r) && !!ctx.cspLower;
   let pages, map, prefix, fromPage = 1;
-  if(isSsa){
+  if(isCsp){
+    pages=ctx.cspLower; map=ctx.cspMap; prefix='CSP';
+  } else if(isSsa){
     if(ctx.ssaLower){ pages=ctx.ssaLower; map=ctx.ssaMap; prefix='SSA'; }
     else { pages=ctx.sspLower; map=ctx.docMap; prefix='SSA –'; fromPage=ctx.ssaStart||1; }
   } else {
@@ -682,18 +726,24 @@ function decideLocal(item, secYes, ctx){
   const strong  = hit.found.size>=2 && hit.coverage>=0.34;
   const partial = !strong && hit.found.size>=1 && hit.coverage>=0.2;
 
+  const loc = hit.bestPage>0
+    ? headingLabel(nearestHeading(map, hit.bestPage), hit.bestPage, prefix)
+      + (hit.best2Page>0 && hit.best2Page!==hit.bestPage && hit.best2Score>=hit.bestScore*0.6 ? ' (also p.'+hit.best2Page+')' : '')
+    : '';
   if(strong || (terms.length<=2 && hit.found.size>=1)){
-    return {ref: headingLabel(nearestHeading(map, hit.bestPage), hit.bestPage, prefix), ans:'yes', why:''};
+    return {ref: loc, ans:'yes', why:''};
   }
   if(partial){
-    return {ref: headingLabel(nearestHeading(map, hit.bestPage), hit.bestPage, prefix), ans:'partial',
+    return {ref: loc, ans:'partial',
             why:'reviewer to verify the provision fully implements the requirement'};
   }
-  /* nothing located → Not Evident: missing evidence, company response required */
-  const expected = (isSsa ? ssaRef(q) : sspRef(q)).split(';')[0];
-  let why = 'no provision matching this requirement was located in the document text (expected at '+expected+') — amendment or supporting evidence required';
+  /* nothing located → Not Evident: missing evidence, company response required.
+     The expected section is cited with its detected page in the plan, when found. */
+  const exMap = isCsp ? ctx.cspMap : ((isSsa && ctx.ssaLower) ? ctx.ssaMap : ctx.docMap);
+  const expected = withPages((isSsa ? ssaRef(q) : sspRef(q)).split(';')[0], exMap);
+  let why = 'no provision matching this requirement was located in the document text — required at '+expected+' — amendment or supporting evidence required';
   if(/ISPS Code A\/13/i.test(q)) why += '; CSO/SSO training evidence per A/13.1: recommend corrective action and record as a nonconformity if evidence is not provided';
-  return {ref:'Not Evident — not located in '+(isSsa?'SSA':'SSP')+' text', ans:'notevident', why};
+  return {ref:'Not Evident — not located in '+(isCsp?'CSP':(isSsa?'SSA':'SSP'))+' text', ans:'notevident', why};
 }
 
 
@@ -765,8 +815,23 @@ function groupOf(item){
   return '2-A) General';
 }
 
+/* FSSI cross-check: each detected FSSI topic searched in the SSP (indicative) */
+function fssiCrossCheck(fssiPages, sspLower){
+  const map = buildDocMap(fssiPages);
+  const topics = [];
+  for(const e of map){
+    if(!e.title || e.title.length<4) continue;
+    const terms = keyTerms(e.title);
+    if(!terms.length) continue;
+    const hit = searchDoc(terms, sspLower);
+    const covered = (hit.found.size>=Math.min(2,terms.length) && hit.coverage>=0.4) || (terms.length===1 && hit.found.size===1);
+    topics.push({id:e.id, title:e.title, page:e.page, covered, where: covered && hit.bestPage>0 ? 'SSP p.'+hit.bestPage : null});
+  }
+  return topics;
+}
+
 /* steps 1-3: review basis statement */
-function reviewBasisText(dc, secYes, ssaSeparate, rd){
+function reviewBasisText(dc, secYes, ssaSeparate, rd, fssiTopics, cspProvided){
   const L=[];
   L.push('REVIEW BASIS');
   L.push('Desktop assessment of the submitted Ship Security Plan, completed prior to the initial audit.');
@@ -784,11 +849,17 @@ function reviewBasisText(dc, secYes, ssaSeparate, rd){
   L.push('Detected review language: ' + dc.lang + ' (English preferred; English / French / Spanish acceptable).');
   L.push('This review is based only on the review language; any other-language content has not been checked for accuracy or completeness.');
   L.push('');
-  L.push('FSSI: not assessed by this tool \u2014 the reviewer is to confirm the applicable Flag State Special Instructions' + (rd.flag ? (' ('+rd.flag+')') : '') + ' are addressed in the SSP.');
+  if(fssiTopics){
+    const cov = fssiTopics.filter(t=>t.covered).length;
+    L.push('FSSI: document provided and cross-checked (indicative) \u2014 '+cov+' of '+fssiTopics.length+' detected FSSI topics are traceable in the SSP; untraceable topics are listed in the summary as open items. Reviewer to confirm coverage and adequacy.');
+  } else {
+    L.push('FSSI: document not provided \u2014 the reviewer is to confirm the applicable Flag State Special Instructions' + (rd.flag ? (' ('+rd.flag+')') : '') + ' are addressed in the SSP.');
+  }
+  L.push('CSP: ' + (cspProvided ? 'document provided \u2014 SEC-section items are referenced from the CSP with section and page.' : (secYes ? 'not provided \u2014 CSP-dependent SEC items are recorded as missing evidence.' : 'not required (SEC notation not requested).')));
   return L.join('\n');
 }
 
-function localSummary(vessel, secYes, findings, tally, rd, basisText, outcome){
+function localSummary(vessel, secYes, findings, tally, rd, basisText, outcome, fssiTopics){
   const nos   = findings.filter(f=>f.ans==='no');
   const nes   = findings.filter(f=>f.ans==='notevident');
   const parts = findings.filter(f=>f.ans==='partial');
@@ -807,6 +878,12 @@ function localSummary(vessel, secYes, findings, tally, rd, basisText, outcome){
   s += 'SUGGESTED REVIEW OUTCOME (reviewer to confirm)\n' + outcome.text + '\n\n';
   s += 'NONCONFORMITIES / DEFICIENCIES (No)\n' + (nos.length ? byGroup(nos) : '\u2022 None.') + '\n\n';
   s += 'MISSING EVIDENCE (Not Evident) \u2014 OPEN ITEMS REQUIRING COMPANY RESPONSE\n' + (nes.length ? byGroup(nes) : '\u2022 None.') + '\n\n';
+  if(fssiTopics){
+    const unc = fssiTopics.filter(t=>!t.covered);
+    s += 'FSSI CROSS-CHECK (INDICATIVE)\n';
+    s += (fssiTopics.length-unc.length)+' of '+fssiTopics.length+' detected FSSI topics are traceable in the SSP.\n';
+    s += (unc.length ? unc.map(t=>'\u2022 FSSI '+t.id+(t.title?(' '+t.title):'')+' (FSSI p.'+t.page+') \u2014 not traceable in the SSP; reviewer to confirm or request amendment').join('\n') : '\u2022 All detected topics are traceable.') + '\n\n';
+  }
   s += 'PARTIALLY ADDRESSED \u2014 REVIEWER TO VERIFY ('+parts.length+' ITEMS)\n' + (parts.length ? parts.map(f=>'\u2022 Item '+f.row+': '+shorten(f.q,110)+' ['+(f.ref||'')+']').join('\n') : '\u2022 None.') + '\n\n';
   s += 'NOT APPLICABLE\n' + (nas.length ? nas.map(f=>'\u2022 Item '+f.row+': '+shorten(f.q,110)+' \u2014 '+(f.why||f.ref)).join('\n') : '\u2022 None.') + '\n\n';
   s += 'CONFORMING ITEMS\n\u2022 '+tally.yes+' checklist items were located in the submitted documents with references recorded on the checklist form.\n\n';
@@ -961,6 +1038,15 @@ $('gen').addEventListener('click', async ()=>{
       setStatus('Extracting text from the Ship Security Assessment…');
       ssaPages = await extractPdfPages(state.ssaFile);
     }
+    let fssiPages = null, cspPages = null;
+    if(state.fssiFile){
+      setStatus('Extracting text from the Flag State Special Instructions…');
+      fssiPages = await extractPdfPages(state.fssiFile);
+    }
+    if(state.cspFile){
+      setStatus('Extracting text from the CSP / other requirements…');
+      cspPages = await extractPdfPages(state.cspFile);
+    }
     const fullText = sspPages.join('\n') + (ssaPages ? '\n'+ssaPages.join('\n') : '');
     if(fullText.replace(/\s/g,'').length < 200){
       throw new Error('Almost no text could be extracted — the PDF looks scanned. Run OCR on it first.');
@@ -981,6 +1067,8 @@ $('gen').addEventListener('click', async ()=>{
       sspLower: sspPages.map(t=>t.toLowerCase()),
       ssaLower: ssaPages ? ssaPages.map(t=>t.toLowerCase()) : null,
       docMap, ssaMap,
+      cspLower: cspPages ? cspPages.map(t=>t.toLowerCase()) : null,
+      cspMap:   cspPages ? buildDocMap(cspPages) : [],
       // SSP-only upload ⇒ the SSA is included in the SSP; find where it starts
       ssaStart: ssaPages ? null : findSsaStart(docMap, sspPages)
     };
@@ -1000,10 +1088,11 @@ $('gen').addEventListener('click', async ()=>{
     const rd = reviewDetails();
     const dc = docControl(sspPages);
     const outcome = suggestOutcome(tally);
-    const basisText = reviewBasisText(dc, secYes, !!ssaPages, rd);
+    const fssiTopics = fssiPages ? fssiCrossCheck(fssiPages, ctx.sspLower) : null;
+    const basisText = reviewBasisText(dc, secYes, !!ssaPages, rd, fssiTopics, !!cspPages);
 
     /* 5. Summary of gaps & observations */
-    summaryText = localSummary(vessel, secYes, findings, tally, rd, basisText, outcome);
+    summaryText = localSummary(vessel, secYes, findings, tally, rd, basisText, outcome, fssiTopics);
 
     /* 6. Build both documents */
     label('Writing checklist…');
@@ -1025,6 +1114,7 @@ $('gen').addEventListener('click', async ()=>{
     $('res-vessel').textContent =
       (vessel.name||'Vessel')+'  ·  '+(vessel.classId||'class n/a')+'  (shown for reference only — Vessel Name / Class ID are left blank on the form)'+
       '  ·  SEC: '+(secYes?'Yes':'No')+'  ·  SSA: '+(state.ssaFile?'separate document':'included in SSP')+
+      '  ·  FSSI: '+(state.fssiFile?'provided':'—')+'  ·  CSP: '+(state.cspFile?'provided':'—')+
       '  ·  '+outcome.short;
     $('t-yes').textContent=tally.yes; $('t-partial').textContent=tally.partial; $('t-ne').textContent=tally.notevident;
     $('t-no').textContent=tally.no; $('t-na').textContent=tally.na;
