@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UWILD Survey Instructions — Ship Status → Template Mapper</title>
+<style>
+  :root{
+    --navy:#0b2545; --navy2:#13315c; --blue:#1d6fb8; --sky:#eaf2fb;
+    --ink:#1c2733; --muted:#5b6b7b; --line:#d7e0ea; --bg:#f2f5f9;
+    --ok:#1e7d43; --ok-bg:#e7f5ec; --warn:#b3261e; --warn-bg:#fdecea;
+    --amber:#9a6700; --amber-bg:#fff4d6; --paper:#ffffff;
+    --radius:12px; --shadow:0 2px 10px rgba(11,37,69,.08);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Segoe UI",system-ui,-apple-system,Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.5}
+
+  /* ===== Header ===== */
+  header{background:linear-gradient(135deg,var(--navy) 0%,var(--navy2) 60%,#1b4a7a 100%);color:#fff;padding:22px 28px}
+  header .wrap{max-width:1180px;margin:0 auto;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  header svg{flex:0 0 auto}
+  header h1{font-size:1.35rem;font-weight:600;letter-spacing:.2px}
+  header p{font-size:.85rem;opacity:.85}
+  .progress-pill{margin-left:auto;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:999px;padding:7px 16px;font-size:.8rem;display:flex;align-items:center;gap:10px}
+  .progress-bar{width:120px;height:6px;background:rgba(255,255,255,.2);border-radius:3px;overflow:hidden}
+  .progress-bar i{display:block;height:100%;width:0;background:#7fd1a7;border-radius:3px;transition:width .3s}
+
+  /* ===== Icon tab cards ===== */
+  .tabs{max-width:1180px;margin:22px auto 0;padding:0 20px;display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .tab-card{background:var(--paper);border:2px solid var(--line);border-radius:var(--radius);padding:18px 20px;display:flex;align-items:center;gap:16px;cursor:pointer;box-shadow:var(--shadow);transition:border-color .15s, transform .12s;text-align:left}
+  .tab-card:hover{transform:translateY(-2px)}
+  .tab-card.active{border-color:var(--blue);background:linear-gradient(180deg,#fff, var(--sky))}
+  .tab-card .ic{width:54px;height:54px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+  .tab-card.ship .ic{background:var(--sky);color:var(--blue)}
+  .tab-card.doc .ic{background:#eef7f0;color:var(--ok)}
+  .tab-card h2{font-size:1.02rem;color:var(--navy)}
+  .tab-card small{color:var(--muted);font-size:.8rem;display:block;margin-top:2px}
+  .tab-card .badge{margin-left:auto;font-size:.72rem;background:var(--amber-bg);color:var(--amber);border-radius:999px;padding:4px 10px;white-space:nowrap}
+  .tab-card .badge.ok{background:var(--ok-bg);color:var(--ok)}
+
+  main{max-width:1180px;margin:18px auto 60px;padding:0 20px}
+  .panel{display:none}
+  .panel.active{display:block}
+
+  /* ===== Form ===== */
+  .section{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:16px;overflow:hidden}
+  .section>h3{background:var(--sky);color:var(--navy);font-size:.9rem;padding:11px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:9px}
+  .section>h3 .num{background:var(--blue);color:#fff;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:.72rem;flex:0 0 auto}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;padding:16px 18px}
+  .field label{display:block;font-size:.78rem;font-weight:600;color:var(--muted);margin-bottom:5px}
+  .field label .req{color:var(--warn)}
+  .field input[type=text],.field input[type=date],.field select{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:8px;font-size:.9rem;font-family:inherit;background:#fff;color:var(--ink)}
+  .field input:focus,.field select:focus{outline:2px solid var(--blue);outline-offset:-1px;border-color:var(--blue)}
+  .field .map-tag{display:inline-block;font-size:.68rem;color:var(--blue);background:var(--sky);border-radius:5px;padding:1px 7px;margin-left:6px;font-weight:500;font-family:Consolas,monospace}
+
+  .cond{padding:14px 18px;border-top:1px dashed var(--line)}
+  .cond-head{display:flex;align-items:flex-start;gap:12px}
+  .switch{position:relative;width:42px;height:23px;flex:0 0 auto;margin-top:2px}
+  .switch input{opacity:0;width:0;height:0}
+  .switch em{position:absolute;inset:0;background:#c3cfdb;border-radius:999px;transition:.18s;cursor:pointer}
+  .switch em:before{content:"";position:absolute;width:17px;height:17px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.18s;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+  .switch input:checked+em{background:var(--ok)}
+  .switch input:checked+em:before{transform:translateX(19px)}
+  .cond-head b{font-size:.9rem;color:var(--navy);font-weight:600}
+  .cond-head small{display:block;color:var(--muted);font-size:.78rem;margin-top:1px}
+  .cond-body{margin:12px 0 0 54px;display:none}
+  .cond.open .cond-body{display:block}
+  .cond-body .grid{padding:0}
+  .radio-row{display:flex;flex-direction:column;gap:8px}
+  .radio-row label{display:flex;gap:9px;align-items:flex-start;font-size:.85rem;cursor:pointer;padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:#fff}
+  .radio-row label:has(input:checked){border-color:var(--blue);background:var(--sky)}
+  .radio-row input{margin-top:3px;accent-color:var(--blue)}
+
+  /* ===== Template view ===== */
+  .toolbar{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:12px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.76rem;color:var(--muted)}
+  .legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+  .legend .l-f i{background:var(--ok-bg);border:1px solid var(--ok)}
+  .legend .l-m i{background:var(--amber-bg);border:1px solid var(--amber)}
+  .legend .l-r i{background:var(--warn-bg);border:1px solid var(--warn)}
+  .toolbar .spacer{flex:1}
+  .toolbar label.chk{font-size:.8rem;color:var(--muted);display:flex;align-items:center;gap:6px;cursor:pointer}
+  .btn{border:1px solid var(--line);background:#fff;color:var(--navy);border-radius:8px;padding:8px 15px;font-size:.82rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:7px;font-family:inherit}
+  .btn:hover{background:var(--sky);border-color:var(--blue)}
+  .btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+  .btn.primary:hover{background:#175f9f}
+
+  .paper{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:46px 54px;font-family:Cambria,Georgia,"Times New Roman",serif;font-size:.93rem;color:#111;max-width:900px;margin:0 auto}
+  .paper .lh{display:grid;grid-template-columns:70px 1fr 80px 1fr;gap:4px 10px;font-size:.9rem;margin-bottom:14px}
+  .paper .lh b{font-family:"Segoe UI",sans-serif;font-size:.8rem;color:var(--navy)}
+  .paper .subject{border-top:2px solid var(--navy);border-bottom:2px solid var(--navy);padding:9px 0;margin:12px 0 18px;font-weight:bold}
+  .paper p{margin:0 0 11px;text-align:justify}
+  .paper .ind{margin-left:26px}
+  .paper .ind2{margin-left:52px}
+  .paper table.part{border-collapse:collapse;margin:4px 0 12px 26px}
+  .paper table.part td{padding:2px 10px 2px 0;vertical-align:top;font-size:.9rem}
+  .merge{border-radius:4px;padding:0 5px;font-family:inherit;white-space:nowrap}
+  .merge.f{background:var(--ok-bg);outline:1px solid #bfe3cd}
+  .merge.m{background:var(--amber-bg);outline:1px solid #ecd9a0;color:var(--amber);font-family:Consolas,monospace;font-size:.78em}
+  .clause{position:relative;border-left:3px solid transparent;padding-left:10px;margin-left:-13px}
+  .clause.kept{border-left-color:#bfe3cd}
+  .clause.removed{border-left-color:#f3c1bd;background:var(--warn-bg);text-decoration:line-through;color:#8a4a45;opacity:.75}
+  .clause.removed .merge{background:transparent;outline:none;color:inherit}
+  .clause .why{position:absolute;right:6px;top:2px;font-family:"Segoe UI",sans-serif;font-size:.62rem;text-decoration:none;color:var(--warn);background:#fff;border:1px solid #f3c1bd;border-radius:4px;padding:0 6px;display:inline-block}
+  .clause.kept .why{color:var(--ok);border-color:#bfe3cd}
+  .hidden{display:none!important}
+  .sig{margin-top:26px}
+  .notes{margin-top:30px;border:1.5px solid var(--navy);padding:12px 16px;font-family:"Segoe UI",sans-serif;font-size:.78rem;font-weight:600;color:var(--navy)}
+  .notes div{margin:2px 0}
+
+  footer{max-width:1180px;margin:0 auto 40px;padding:0 20px;text-align:center;color:var(--muted);font-size:.75rem}
+
+  @media (max-width:760px){
+    .tabs{grid-template-columns:1fr}
+    .paper{padding:26px 20px}
+    .paper .lh{grid-template-columns:60px 1fr}
+  }
+  @media print{
+    header,.tabs,.toolbar,footer{display:none}
+    body{background:#fff}
+    main{margin:0;padding:0;max-width:none}
+    .paper{border:none;box-shadow:none;padding:0;max-width:none}
+    .clause.removed,.clause .why{display:none!important}
+    .merge{background:transparent;outline:none}
+    #panel-status{display:none!important}
+    #panel-template{display:block!important}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="#9fc4e8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20a2.4 2.4 0 0 0 2 1 2.4 2.4 0 0 0 2-1 2.4 2.4 0 0 1 2-1 2.4 2.4 0 0 1 2 1 2.4 2.4 0 0 0 2 1 2.4 2.4 0 0 0 2-1 2.4 2.4 0 0 1 2-1 2.4 2.4 0 0 1 2 1 2.4 2.4 0 0 0 2 1 2.4 2.4 0 0 0 2-1"/><path d="M4 18l-1-5h18l-1 5"/><path d="M5 13V7h14v6"/><path d="M9 7V4h6v3"/></svg>
+    <div>
+      <h1>UWILD Survey Instructions</h1>
+      <p>Ship Status → Word Template Mapper · Underwater Inspection in Lieu of Drydocking · ABS Office – Dammam</p>
+    </div>
+    <div class="progress-pill">
+      <span id="prog-text">0 / 0 fields mapped</span>
+      <span class="progress-bar"><i id="prog-fill"></i></span>
+    </div>
+  </div>
+</header>
+
+<!-- ============ TWO ICONS ============ -->
+<div class="tabs">
+  <button class="tab-card ship active" id="tab-status" onclick="showPanel('status')">
+    <span class="ic">
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20a2.4 2.4 0 0 0 2 1 2.4 2.4 0 0 0 2-1 2.4 2.4 0 0 1 2-1 2.4 2.4 0 0 1 2 1 2.4 2.4 0 0 0 2 1 2.4 2.4 0 0 0 2-1 2.4 2.4 0 0 1 2-1 2.4 2.4 0 0 1 2 1 2.4 2.4 0 0 0 2 1 2.4 2.4 0 0 0 2-1"/><path d="M4 18l-1-5h18l-1 5"/><path d="M5 13V7h14v6"/><path d="M9 7V4h6v3"/></svg>
+    </span>
+    <span>
+      <h2>Ship Status</h2>
+      <small>Enter the vessel's survey status particulars &amp; applicable conditions</small>
+    </span>
+    <span class="badge" id="badge-status">incomplete</span>
+  </button>
+
+  <button class="tab-card doc" id="tab-template" onclick="showPanel('template')">
+    <span class="ic">
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6"/><path d="M9 17h6"/><path d="M9 9h1"/></svg>
+    </span>
+    <span>
+      <h2>Word File Template</h2>
+      <small>UWILD instruction letter with the ship status mapped into every field</small>
+    </span>
+    <span class="badge ok">live preview</span>
+  </button>
+</div>
+
+<main>
+<!-- ============ PANEL 1 : SHIP STATUS ============ -->
+<div class="panel active" id="panel-status">
+
+  <div class="section">
+    <h3><span class="num">1</span> Vessel &amp; Correspondence Particulars</h3>
+    <div class="grid">
+      <div class="field"><label>Vessel Name <span class="req">*</span><span class="map-tag">{{Vessel Name}}</span></label><input type="text" id="f-vessel" placeholder="e.g. AL JUBAIL STAR"></div>
+      <div class="field"><label>Class Number <span class="req">*</span><span class="map-tag">{{Class Number}}</span></label><input type="text" id="f-class" placeholder="e.g. 9876543"></div>
+      <div class="field"><label>Flag State <span class="req">*</span><span class="map-tag">{{Flag State}}</span></label><input type="text" id="f-flag" placeholder="e.g. Saudi Arabia"></div>
+      <div class="field"><label>Vessel Manager Name <span class="req">*</span><span class="map-tag">{{Vessel Manager Name}}</span></label><input type="text" id="f-manager" placeholder="e.g. XYZ Ship Management Co."></div>
+      <div class="field"><label>Attn</label><input type="text" id="f-attn" placeholder="e.g. Technical Superintendent"></div>
+      <div class="field"><label>Copies to</label><input type="text" id="f-copies" placeholder="e.g. ABS Survey file"></div>
+      <div class="field"><label>Date of Report (owner's e-mail request) <span class="req">*</span><span class="map-tag">{{Date of Report}}</span></label><input type="date" id="f-date"></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3><span class="num">2</span> Survey Status Particulars</h3>
+    <div class="grid">
+      <div class="field"><label>Special Periodical Survey — No.</label><input type="text" id="f-spsno" placeholder="e.g. 3"></div>
+      <div class="field"><label>Special Periodical Survey — due <span class="req">*</span><span class="map-tag">{{Special Periodical Survey_Due Date}}</span></label><input type="date" id="f-spsdue"></div>
+      <div class="field"><label>Intermediate Hull Survey — range dates <span class="req">*</span><span class="map-tag">{{Intermediate Hull Survey_Range Date}}</span></label><input type="text" id="f-ihs" placeholder="e.g. 15 Mar 2026 – 15 Mar 2027"></div>
+      <div class="field"><label>Annual Survey of Hull — range dates <span class="req">*</span><span class="map-tag">{{Annual Hull Survey_Range Date}}</span></label><input type="text" id="f-ahs" placeholder="e.g. 15 Mar 2026 – 15 Sep 2026"></div>
+      <div class="field"><label>Drydocking Survey — due <span class="req">*</span><span class="map-tag">{{Drydocking Survey_Due Date}}</span></label><input type="date" id="f-dddue"></div>
+      <div class="field"><label>Last Drydocking Survey (date / place)</label><input type="text" id="f-lastdd" placeholder="e.g. 12 Jan 2024, Dubai"></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3><span class="num">3</span> Class Condition &amp; Applicability of Clauses <small style="font-weight:400;color:var(--muted)">&nbsp;— each switch keeps or removes a "delete if not applicable" clause in the letter</small></h3>
+
+    <div class="cond" id="c-susp">
+      <div class="cond-head">
+        <label class="switch"><input type="checkbox" id="f-susp"><em></em></label>
+        <span><b>Vessel's Class is suspended</b><small>Keeps the suspension clause and switches the closing paragraph to "carry out as soon as possible".</small></span>
+      </div>
+      <div class="cond-body"><div class="grid">
+        <div class="field"><label>Suspended since</label><input type="date" id="f-suspdate"></div>
+      </div></div>
+    </div>
+
+    <div class="cond open" id="c-osr">
+      <div class="cond-head" style="align-items:flex-start">
+        <span style="width:42px;flex:0 0 auto"></span>
+        <span style="flex:1"><b>Outstanding Recommendations / Additional Class Requirements on record</b><small>Selects which "In addition…" block is retained relative to the Drydocking Survey.</small>
+          <div class="radio-row" style="margin-top:10px">
+            <label><input type="radio" name="osr" value="none" checked><span><b>None on record</b> — letter states "No Outstanding Recommendations / Additional Requirement on record relative to Drydocking Survey."</span></label>
+            <label><input type="radio" name="osr" value="complete"><span><b>OSR on record — completion required</b> at this time (Option 1a).</span></label>
+            <label><input type="radio" name="osr" value="reexam"><span><b>OSR on record — re-examination</b>, possible extension until SPS of Hull subject to annual re-inspection (Option 1b).</span></label>
+            <label><input type="radio" name="osr" value="grounding"><span><b>Additional Class Requirement relative to grounding</b> — double-bottom tank inspection required (Option 2).</span></label>
+          </div>
+        </span>
+      </div>
+      <div class="cond-body" id="osr-extra" style="margin-left:54px;display:none">
+        <div class="grid">
+          <div class="field"><label>Extension until Special Periodical Survey of Hull — No.</label><input type="text" id="f-osrspsno" placeholder="e.g. 3"></div>
+          <div class="field"><label>SPS of Hull due on</label><input type="date" id="f-osrspsdue"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cond" id="c-uwild">
+      <div class="cond-head">
+        <label class="switch"><input type="checkbox" id="f-uwildnot" checked><em></em></label>
+        <span><b>UWILD optional notation assigned</b><small>Keeps the clause requiring verification of hull markings &amp; equipment per sections 3.3.5 &amp; 3.5 of the UWILD requirements.</small></span>
+      </div>
+    </div>
+
+    <div class="cond" id="c-esp">
+      <div class="cond-head">
+        <label class="switch"><input type="checkbox" id="f-esp"><em></em></label>
+        <span><b>ESP vessel</b><small>Keeps the clause requiring examination of lower portions of cargo holds &amp; ballast tanks (Intermediate Hull Survey scope, 7-3-2/…).</small></span>
+      </div>
+      <div class="cond-body"><div class="grid">
+        <div class="field"><label>ABS Rule reference 7-3-2 / paragraph</label><input type="text" id="f-esprule" placeholder="e.g. 5.1"></div>
+      </div></div>
+    </div>
+
+    <div class="cond" id="c-15y">
+      <div class="cond-head">
+        <label class="switch"><input type="checkbox" id="f-over15"><em></em></label>
+        <span><b>Vessel over 15 years of age</b><small>Keeps the special-considerations block per Sect 3.3.1 of ABS UWILD requirements (records review, internal examinations…).</small></span>
+      </div>
+      <div class="cond-body">
+        <div class="radio-row">
+          <label><input type="radio" name="ihsopt" value="ihs" checked><span>Item 2 reads: <b>Completion of Intermediate Hull Survey.</b></span></label>
+          <label><input type="radio" name="ihsopt" value="internal"><span>Item 2 reads: <b>Internal examination of representative ballast tanks, cofferdams, void spaces and cargo holds.</b></span></label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="text-align:right;margin-top:4px">
+    <button class="btn primary" onclick="showPanel('template')">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+      Map to Word Template →
+    </button>
+  </div>
+</div>
+
+<!-- ============ PANEL 2 : WORD TEMPLATE ============ -->
+<div class="panel" id="panel-template">
+  <div class="toolbar">
+    <span class="legend">
+      <span class="l-f"><i></i>mapped from ship status</span>
+      <span class="l-m"><i></i>missing — fill in Ship Status</span>
+      <span class="l-r"><i></i>clause removed (not applicable)</span>
+    </span>
+    <span class="spacer"></span>
+    <label class="chk"><input type="checkbox" id="show-removed" checked onchange="render()"> show removed clauses</label>
+    <button class="btn" onclick="window.print()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      Print
+    </button>
+    <button class="btn primary" onclick="downloadDoc()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+      Download .doc
+    </button>
+  </div>
+  <div class="paper" id="letter"></div>
+</div>
+</main>
+
+<footer>Standalone tool — all data stays in this browser (saved locally). Template source: <em>UWILD instruction.docx</em> — ABS Survey Instructions, Underwater Inspection in Lieu of Drydocking.</footer>
+
+<script>
+"use strict";
+
+/* ---------- state ---------- */
+const IDS = ["f-vessel","f-class","f-flag","f-manager","f-attn","f-copies","f-date","f-spsno","f-spsdue","f-ihs","f-ahs","f-dddue","f-lastdd","f-susp","f-suspdate","f-uwildnot","f-esp","f-esprule","f-over15","f-osrspsno","f-osrspsdue"];
+const REQUIRED = ["f-vessel","f-class","f-flag","f-manager","f-date","f-spsdue","f-ihs","f-ahs","f-dddue"];
+const $ = id => document.getElementById(id);
+const radio = name => (document.querySelector(`input[name="${name}"]:checked`)||{}).value;
+
+function saveState(){
+  const s = {};
+  IDS.forEach(id=>{ const el=$(id); s[id] = el.type==="checkbox" ? el.checked : el.value; });
+  s.osr = radio("osr"); s.ihsopt = radio("ihsopt");
+  localStorage.setItem("uwild-mapper", JSON.stringify(s));
+}
+function loadState(){
+  let s; try{ s = JSON.parse(localStorage.getItem("uwild-mapper")||"{}"); }catch(e){ s = {}; }
+  IDS.forEach(id=>{ const el=$(id); if(!(id in s)) return; if(el.type==="checkbox") el.checked=!!s[id]; else el.value=s[id]; });
+  if(s.osr) (document.querySelector(`input[name="osr"][value="${s.osr}"]`)||{}).checked = true;
+  if(s.ihsopt) (document.querySelector(`input[name="ihsopt"][value="${s.ihsopt}"]`)||{}).checked = true;
+}
+
+/* ---------- helpers ---------- */
+const esc = t => String(t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+function fmtDate(v){
+  if(!v) return "";
+  const d = new Date(v+"T00:00:00");
+  if(isNaN(d)) return v;
+  return d.toLocaleDateString("en-GB",{day:"2-digit",month:"long",year:"numeric"});
+}
+/* merge chip: value from ship status, or the raw {{field}} placeholder when missing */
+function M(val, placeholder){
+  return val ? `<span class="merge f">${esc(val)}</span>`
+             : `<span class="merge m">{{${esc(placeholder)}}}</span>`;
+}
+function clause(kept, html, why){
+  if(kept) return `<div class="clause kept">${html}</div>`;
+  if(!$("show-removed").checked) return "";
+  return `<div class="clause removed"><span class="why">removed — ${esc(why)}</span>${html}</div>`;
+}
+
+/* ---------- letter renderer ---------- */
+function render(){
+  const v = id => $(id).value.trim();
+  const vesselName = v("f-vessel"), classNo = v("f-class"), flag = v("f-flag"),
+        manager = v("f-manager"), attn = v("f-attn"), copies = v("f-copies"),
+        dateRep = fmtDate(v("f-date")),
+        spsNo = v("f-spsno"), spsDue = fmtDate(v("f-spsdue")),
+        ihs = v("f-ihs"), ahs = v("f-ahs"),
+        ddDue = fmtDate(v("f-dddue")), lastDD = v("f-lastdd");
+  const susp = $("f-susp").checked, suspDate = fmtDate(v("f-suspdate"));
+  const osr = radio("osr") || "none";
+  const uwildNot = $("f-uwildnot").checked;
+  const espOn = $("f-esp").checked, espRule = v("f-esprule");
+  const over15 = $("f-over15").checked, ihsopt = radio("ihsopt") || "ihs";
+  const osrSpsNo = v("f-osrspsno"), osrSpsDue = fmtDate(v("f-osrspsdue"));
+
+  const dash = '<span style="color:#999">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>';
+  let h = "";
+
+  /* letterhead */
+  h += `<div class="lh">
+    <b>To :</b><span>${M(manager,"Vessel Manager Name")}</span><b>Date:</b><span>${M(dateRep,"Date of Report")}</span>
+    <b>Attn :</b><span>${attn?esc(attn):dash}</span><b>Copies to:</b><span>${copies?esc(copies):dash}</span>
+    <b>From:</b><span>ABS Office - Dammam</span><b>File ref:</b><span>S-1</span>
+  </div>`;
+  h += `<div class="subject">Subject:&nbsp; MV &ldquo;${M(vesselName,"Vessel Name")}&rdquo;, Class No. ${M(classNo,"Class Number")}, Flag &ndash; ${M(flag,"Flag State")}<br>
+        <span style="padding-left:64px">Survey Instructions - Underwater Inspection in Lieu of Drydocking (UWILD)</span></div>`;
+
+  h += `<p>Gentlemen,</p>`;
+  h += `<p>We have received your e-mail dated ${M(dateRep,"Date of Report")} requesting an UWILD Survey for the subject vessel as permitted by ABS Rules (7-2-1/11.1) for Drydocking Surveys between Special Surveys.</p>`;
+  h += `<p>We have reviewed subject vessel&rsquo;s survey status and note the following survey particulars:</p>`;
+
+  h += clause(susp, `<p class="ind">Class - Vessel&rsquo;s Class is suspended since ${susp ? M(suspDate,"Suspension Date") : dash}.</p>`, "class not suspended");
+
+  h += `<table class="part">
+    <tr><td>-</td><td>Special Periodical Survey No. ${spsNo?`<span class="merge f">${esc(spsNo)}</span>`:dash} due</td><td>-</td><td>${M(spsDue,"Special Periodical Survey_Due Date")}</td></tr>
+    <tr><td>-</td><td>Intermediate Hull Survey range dates</td><td>-</td><td>${M(ihs,"Intermediate Hull Survey_Range Date")}</td></tr>
+    <tr><td>-</td><td>Annual Survey of Hull range dates</td><td>-</td><td>${M(ahs,"Annual Hull Survey_Range Date")}</td></tr>
+    <tr><td>-</td><td>Drydocking Survey due</td><td>-</td><td>${M(ddDue,"Drydocking Survey_Due Date")}</td></tr>
+    <tr><td>-</td><td colspan="3">Note:&nbsp; Last drydocking survey ( ${lastDD?`<span class="merge f">${esc(lastDD)}</span>`:dash} )</td></tr>
+  </table>`;
+
+  h += clause(osr==="none",
+    `<p class="ind">- &nbsp;No Outstanding Recommendations / Additional Requirement on record relative to Drydocking Survey.</p>`,
+    "OSR / additional requirement selected");
+
+  h += `<p>With respect to the foregoing, please be advised that this office has no objection, at this time, to crediting an Underwater Inspection in Lieu of Drydocking Survey for the subject vessel provided the survey is carried out in accordance with ABS Rules for Surveys After Construction Part 7-A1-1 to the satisfaction of the attending Surveyor.</p>`;
+
+  h += clause(uwildNot,
+    `<p>We note that vessel is assigned with an ABS optional notation, <b>UWILD</b>, for Underwater Inspection in Lieu of Drydocking. In order to maintain the UWILD notation, the vessel&rsquo;s hull markings and equipment installed as required by section 3.3.5 &amp; 3.5 of the UWILD requirements are to be satisfactorily verified by the attending Surveyor at this time.</p>`,
+    "UWILD notation not assigned");
+
+  /* --- In addition block --- */
+  const anyOsr = osr!=="none";
+  h += clause(anyOsr, `<p>In addition, the followings are also to be satisfactory completed at this time:</p>`, "no outstanding recommendations");
+  h += clause(osr==="complete", `<p class="ind">1&nbsp;&nbsp; Completion of Outstanding Recommendation contained in ABS report noted above.</p>`, "option not selected");
+  h += clause(osr==="reexam",
+    `<p class="ind">1&nbsp;&nbsp; Re-examination of Outstanding Recommendation as contained in the ABS report noted above. Temporary repair by way of additional carlings may be added if required.</p>
+     <p class="ind2">a)&nbsp; If the above condition is satisfactory, attending surveyor may consider extending the outstanding recommendation until the Special Periodical Survey of Hull ${osr==="reexam"?M(osrSpsNo,"SPS Hull No."):dash} due on ${osr==="reexam"?M(osrSpsDue,"SPS Hull Due Date"):dash} subject to an annual re-inspection to confirm that there is no further deterioration, otherwise permanent repair to be carried out at this time.</p>
+     <p class="ind2">b)&nbsp; We further advise that the decision whether to recommend an extension of the OSR is up to the attending Surveyor. If in his opinion, an extension should not be granted due to the condition of the vessel, then he is not obligated to recommend same.</p>`,
+    "option not selected");
+  h += clause(osr==="grounding",
+    `<p class="ind">2&nbsp;&nbsp; Completion of Additional Class Requirement / Facility Comments contained in ABS report above relative to grounding.</p>
+     <p class="ind2">a)&nbsp; In conjunction with the condition of the Additional Class Requirement / Facility Comments reported, attending surveyor is to inspect double bottom tanks in way of bottom plating, paying close attention to the affected area, expand the inspection to the surrounding and other areas as deemed necessary.</p>
+     <p class="ind2">b)&nbsp; If during the internal tank inspection, damages are found, where in the opinion of the attending surveyor warrants drydocking or prompt repair, then the UWILD survey cannot be credited.</p>
+     <p class="ind2">c)&nbsp; If no damage is found other than paint removal, an external examination when the vessel is next on drydock is required as an additional surveyor comment.</p>`,
+    "option not selected");
+
+  h += `<p>The In-water Survey is to be sufficient to the extent to provide the information normally obtained from a drydocking survey. We emphasize that, per Section 3.3.6 of the UWILD requirements, the in-water visibility and the cleanliness of the hull below the waterline is to be clear enough to permit a meaningful examination which allows the Surveyor and diver to determine the condition of the plating, propeller fair weather cap, appendages and the weldments. Where fitted, connection of any energy saving device to the hull body is also to be closely examined. When the rudder bearing clearances and/or stern bush clearances of oil lubricated stern bearings are not taken, the attending surveyor shall report the reason in the AB Sum A as a statement/observation.</p>`;
+
+  h += `<p>Where fitted with azimuth thruster units, the visible parts including but not limited to the condition of gear housing, blades, locking/fastening and sealing arrangements of side thruster or directional propellers are to be closely examined. Further, attending surveyor is to review on board the operating history and testing is to be carried out to confirm satisfactory operation.</p>`;
+
+  h += clause(espOn,
+    `<p>For ESP vessel, since inspection of the lower portions of the cargo holds and ballast tanks is a requirement for Intermediate Survey of Hull as per ABS Rules for Survey After Construction 7-3-2/${espOn?M(espRule,"Rule Para"):dash}, the lower portions of the cargo holds and ballast tanks are to be examined at this time.</p>`,
+    "not an ESP vessel");
+
+  h += clause(over15,
+    `<p>We advise that as per Sect 3.3.1 of ABS UWILD requirements, special considerations are required for vessel over 15 years of age. As subject vessel is over 15 years of age, we require the following additional surveys and examinations to be carried out to the satisfaction of our attending Surveyor prior to recommending credit to subject UWILD.</p>
+     <p class="ind">1&nbsp;&nbsp; Review of vessel&rsquo;s records to ensure that no unapproved repairs have been made.</p>
+     <p class="ind">2&nbsp;&nbsp; ${ihsopt==="ihs" ? "Completion of Intermediate Hull Survey." : "Internal examination of representative ballast tanks, cofferdams, void spaces and cargo holds."}</p>
+     <p class="ind">3&nbsp;&nbsp; If during internal examination of tank/spaces, extensive wastage or deterioration are found, the scope of internal examination is to be expanded to include more tanks/spaces and gauging if necessary.</p>`,
+    "vessel not over 15 years");
+
+  h += `<p>Where required by the Flag Administration, the attending surveyor is to request for formal authorization on the UWILD survey that will be carried out via the contact office for the Flag Administration.</p>`;
+
+  h += `<p>Prior to the UWILD Survey being carried out, the port office is to notify the Owner or Manager of the vessel that the decision whether to recommend an UWILD for credit is up to the attending Surveyor. If the underwater inspection reveals damage or deterioration to the hull structure that require the vessel to be taken out of water to effect the repairs, in such cases, the UWILD Survey will not be credited and the vessel will be required to be drydocked to effect the repairs prior to crediting the drydock survey.</p>`;
+
+  h += clause(!susp, `<p>The UWILD Survey requested should be carried out on or before the Drydocking due date.</p>`, "class is suspended");
+  h += clause(susp, `<p>The UWILD Survey requested should be carried out as soon as possible due to vessel&rsquo;s class had been suspended.</p>`, "class not suspended");
+
+  h += `<p>In case you have any further questions relative to the above, please feel free to contact this office at any time.</p>`;
+  h += `<div class="sig"><p>Very truly yours,</p><p style="margin-top:34px">By:&nbsp; ABS Dammam</p></div>`;
+
+  h += `<div class="notes">
+    <div>NOTES:</div>
+    <div>THIS INSTRUCTION REMAINS VALID UNTIL ${M(ddDue,"Drydocking Survey_Due Date")}.</div>
+    <div>A COPY OF THIS INSTRUCTION IS TO BE MADE AVAILABLE TO THE ATTENDING SURVEYOR.</div>
+    <div>THE ATTENDING SURVEYOR IS TO ATTACH THIS INSTRUCTION TO THE WORK ORDER.</div>
+  </div>`;
+
+  $("letter").innerHTML = h;
+  updateProgress();
+}
+
+/* ---------- progress / badge ---------- */
+function updateProgress(){
+  let filled = 0;
+  REQUIRED.forEach(id=>{ if($(id).value.trim()) filled++; });
+  const total = REQUIRED.length;
+  $("prog-text").textContent = `${filled} / ${total} fields mapped`;
+  $("prog-fill").style.width = (filled/total*100)+"%";
+  const b = $("badge-status");
+  if(filled===total){ b.textContent="complete"; b.classList.add("ok"); }
+  else{ b.textContent=`${total-filled} missing`; b.classList.remove("ok"); }
+}
+
+/* ---------- panel switching ---------- */
+function showPanel(which){
+  document.querySelectorAll(".panel").forEach(p=>p.classList.remove("active"));
+  document.querySelectorAll(".tab-card").forEach(t=>t.classList.remove("active"));
+  $("panel-"+which).classList.add("active");
+  $("tab-"+which).classList.add("active");
+  if(which==="template") render();
+}
+
+/* ---------- conditional sub-forms ---------- */
+function syncConds(){
+  $("c-susp").classList.toggle("open", $("f-susp").checked);
+  $("c-esp").classList.toggle("open", $("f-esp").checked);
+  $("c-15y").classList.toggle("open", $("f-over15").checked);
+  $("osr-extra").style.display = radio("osr")==="reexam" ? "block" : "none";
+}
+
+/* ---------- Word export ---------- */
+function downloadDoc(){
+  const wasChecked = $("show-removed").checked;
+  $("show-removed").checked = false;         /* export = final letter, removed clauses dropped */
+  render();
+  const body = $("letter").innerHTML
+    .replace(/<span class="why">[^<]*<\/span>/g,"")
+    .replace(/class="merge m"/g,'style="background:#fff3cd"')
+    .replace(/class="merge f"/g,"");
+  $("show-removed").checked = wasChecked;
+  render();
+  const name = ($("f-vessel").value.trim()||"vessel").replace(/[^\w\- ]+/g,"").replace(/\s+/g,"_");
+  const html = `<html xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8">
+    <style>body{font-family:Cambria,Georgia,serif;font-size:11pt;margin:2cm}
+    .lh{display:block} .lh b{font-family:Arial;font-size:9pt}
+    .subject{border-top:2px solid #0b2545;border-bottom:2px solid #0b2545;padding:8px 0;font-weight:bold}
+    p{text-align:justify;margin:0 0 9pt} .ind{margin-left:24pt} .ind2{margin-left:48pt}
+    table.part td{font-size:11pt;padding:1pt 8pt 1pt 0}
+    .clause{margin:0} .notes{border:1.5pt solid #0b2545;padding:9pt;font-family:Arial;font-size:8.5pt;font-weight:bold;margin-top:18pt}
+    </style></head><body>${body}</body></html>`;
+  const blob = new Blob(["﻿"+html],{type:"application/msword"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `UWILD_Instruction_${name}.doc`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+/* ---------- wiring ---------- */
+document.addEventListener("input", e=>{ saveState(); syncConds(); if($("panel-template").classList.contains("active")) render(); updateProgress(); });
+loadState();
+syncConds();
+updateProgress();
+render();
+</script>
+</body>
+</html>
