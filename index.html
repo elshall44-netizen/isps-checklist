@@ -300,7 +300,7 @@
       <h4>Analysis engine</h4>
       <span class="mode-chip ai" id="mode-chip">Standalone · meaning &amp; chapter matching</span>
     </div>
-    <p class="sub">Everything runs inside your browser — no account, no API, no billing, and the plan never leaves this device. This is a <b style="color:#c7d8e2">desktop assessment prior to the initial audit</b>: every checklist item is recorded as <b style="color:#c7d8e2">Yes</b> (evidence located, real section &amp; page cited), <b style="color:#c7d8e2">Partially Addressed</b> (located but the reviewer must verify implementation), <b style="color:#c7d8e2">Not Evident</b> (no provision located — amendment or supporting evidence required), <b style="color:#c7d8e2">No</b> (conflicts with the requirement) or <b style="color:#c7d8e2">N/A</b>. Document control, language and revision status are checked automatically, and the summary states a suggested review outcome. Matching is meaning-oriented: maritime-security synonyms are recognised (CCTV ↔ surveillance, DoS ↔ Declaration of Security, gangway ↔ accommodation ladder…), every item is anchored to the <b style="color:#c7d8e2">exact chapter</b> that best fits the requirement and judged inside it, and level-specific items are checked for genuine security level 1 / 2 / 3 context at the cited chapter. The result is a documented draft — the reviewer confirms substance against the plan and signs.</p>
+    <p class="sub">Everything runs inside your browser — no account, no API, no billing, and the plan never leaves this device. This is a <b style="color:#c7d8e2">desktop assessment prior to the initial audit</b>: every checklist item is recorded as <b style="color:#c7d8e2">Yes</b> (evidence located, real section &amp; page cited), <b style="color:#c7d8e2">Partially Addressed</b> (located but the reviewer must verify implementation), <b style="color:#c7d8e2">Not Evident</b> (no provision located — amendment or supporting evidence required), <b style="color:#c7d8e2">No</b> (conflicts with the requirement) or <b style="color:#c7d8e2">N/A</b>. Document control, language and revision status are checked automatically, and the summary states a suggested review outcome. Matching is meaning-oriented: maritime-security synonyms are recognised (CCTV ↔ surveillance, DoS ↔ Declaration of Security, gangway ↔ accommodation ladder…), every item is anchored to the <b style="color:#c7d8e2">exact chapter</b> that best fits the requirement and judged inside it; lettered sub-items are understood under their <b style="color:#c7d8e2">numbered parent title</b> — the clause number (e.g. B/9.16.x) carries the parent’s meaning, including the required security level — and level-specific items are only a full Yes when the cited chapter genuinely refers to that level. The result is a documented draft — the reviewer confirms substance against the plan and signs.</p>
   </div>
 
   <!-- Review details (optional; flows into the summary report) -->
@@ -719,33 +719,56 @@ function scanGroups(groups, lowerPages, fromPage=1, toPage=1e9){
 }
 
 /* the exact chapter/section whose page range covers the most required concepts */
-function pickSection(map, lowerPages, groups, fromPage){
+function pickSection(map, lowerPages, groups, ctxGroups, fromPage){
   let best=null, bestN=0;
   for(let i=0;i<map.length;i++){
     const from=map[i].page;
-    let to=lowerPages.length;
-    for(let j=i+1;j<map.length;j++){ if(map[j].page>from){ to=map[j].page; break; } }
+    // only the LAST heading on a page extends onto the next heading's page;
+    // earlier headings on the same page end on that page
+    const nxt = map[i+1];
+    const to = nxt ? (nxt.page===from ? from : nxt.page) : lowerPages.length;
     if(to<fromPage) continue;
-    const s=scanGroups(groups, lowerPages, Math.max(from,fromPage), to);
-    if(s.found.size>bestN){ bestN=s.found.size; best={id:map[i].id, title:map[i].title, page:map[i].page, from:Math.max(from,fromPage), to}; }
+    const a=scanGroups(groups, lowerPages, Math.max(from,fromPage), to);
+    const c=(ctxGroups&&ctxGroups.length) ? scanGroups(ctxGroups, lowerPages, Math.max(from,fromPage), to) : {found:new Set()};
+    const score = a.found.size*2 + c.found.size;   // the sub-item's own concepts weigh double; parent context steers ties
+    if(score>bestN){ bestN=score; best={id:map[i].id, title:map[i].title, page:map[i].page, from:Math.max(from,fromPage), to}; }
   }
   return best;
 }
 
 /* when several headings share the evidence page, cite the one whose title
    matches the requirement's concepts */
-function bestHeadingFor(map, page, groups){
-  const before = nearestHeading(map, page);
+function bestHeadingFor(map, page, groups, pageTxt){
   const cands = map.filter(e=>e.page===page);
-  if(before && !cands.some(e=>e===before)) cands.unshift(before);
-  if(!cands.length) return before;
-  let best=null, bestN=0;
+  if(!cands.length) return null;
+  const before = nearestHeading(map, page-1>0?page-1:page);
+  const lines = String(pageTxt||'').split('\n');
+  // locate each heading's line inside the page, then score the text segment
+  // BELOW each heading — the evidence belongs to the heading it sits under
+  const marks = [];
   for(const e of cands){
-    const t=(e.id+' '+(e.title||'')).toLowerCase();
-    let n=0; for(const g of groups){ if(g.some(v=>t.includes(v.trim()))) n++; }
-    if(n>bestN){ bestN=n; best=e; }
+    const idlc = (e.id||'').replace('§','').toLowerCase();
+    const ttl  = (e.title||'').slice(0,24).toLowerCase();
+    const idx = lines.findIndex(l=>{
+      const s=l.trim().toLowerCase();
+      return s.startsWith(idlc+' ') || s.startsWith(idlc+'.') || (ttl.length>5 && s.includes(ttl));
+    });
+    if(idx>=0) marks.push({e, idx});
   }
-  return best || before || cands[cands.length-1];
+  if(!marks.length) return null;
+  marks.sort((a,b)=>a.idx-b.idx);
+  const segs = [];
+  if(before && marks[0].idx>0 && before.page<page) segs.push({e:before, s:0, t:marks[0].idx});
+  for(let i=0;i<marks.length;i++){
+    segs.push({e:marks[i].e, s:marks[i].idx, t: i+1<marks.length ? marks[i+1].idx : lines.length});
+  }
+  let best=null, bestN=0;
+  for(const g of segs){
+    const txt = lines.slice(g.s, g.t).join(' ');
+    let n=0; for(const gr of groups){ if(gr.some(v=>txt.includes(v))) n++; }
+    if(n>bestN){ bestN=n; best=g.e; }
+  }
+  return best;   // null when nothing attributable — caller falls back to the picked chapter
 }
 
 /* a provision, not scattered words: >=2 concepts within a 3-line window */
@@ -758,6 +781,78 @@ function coOccurs(pageTxt, groups){
     for(const g of groups){ if(g.some(v=>win.includes(v))){ n++; if(n>=2) return true; } }
   }
   return false;
+}
+
+/* ---------- checklist hierarchy: numbered titles, lettered sub-items ----------
+   A lettered sub-item (fragment) is judged in the context of its numbered
+   parent title. The parent is identified from the cited clause numbers:
+   e.g. B/9.16.3 belongs to parent title B/9.16 ("security measures to be
+   applied at security level 2 ... access"). The parent contributes context
+   concepts for chapter selection and the required security level. */
+const PARENT_CTX = {
+  'A/8.4':'ship security assessment identification evaluation',
+  'B/8.3':'ship security assessment on board elements',
+  'B/8.7':'ship security assessment existing measures procedures routine emergency guidance',
+  'B/8.8':'ship security assessment persons activities services operations protect',
+  'B/8.9':'ship security assessment possible threats security incidents damage',
+  'B/8.10':'ship security assessment vulnerabilities conflicts',
+  'B/8.14':'on-scene security survey shipboard protective measures',
+  'A/7.2':'security level 1 activities ship security duties',
+  'B/9.2':'ship security plan organizational structure detail',
+  'A/9.4':'ship security plan measures procedures',
+  'A/12.2':'ship security officer duties',
+  'A/11.2':'company security officer duties',
+  'B/9.7':'security levels duties communications procedures',
+  'B/9.8':'security measures each security level',
+  'B/9.9':'means of access to the ship measures',
+  'B/9.14':'security level 1 access control boarding identity',
+  'B/9.16':'security level 2 access patrol vigilance control',
+  'B/9.17':'security level 3 access control incident instructions',
+  'B/9.21':'restricted areas spaces',
+  'B/9.22':'security level 1 restricted areas locking surveillance',
+  'B/9.23':'security level 2 restricted areas monitoring',
+  'B/9.24':'security level 3 restricted areas search',
+  'B/9.27':'security level 1 cargo handling checking',
+  'B/9.28':'checking of cargo examination scanning',
+  'B/9.30':'security level 2 cargo handling detailed checking',
+  'B/9.32':'security level 3 cargo handling suspension inventory dangerous goods',
+  'B/9.33':'delivery of ship stores inspection',
+  'B/9.35':'security level 1 ship stores checking stowage',
+  'B/9.37':'security level 3 ship stores checking restriction',
+  'B/9.41':'security level 3 unaccompanied baggage screening',
+  'B/9.42':'monitoring the ship lighting patrols surveillance',
+  'B/9.46':'security lighting level location coverage',
+  'B/9.47':'security level 2 monitoring surveillance patrols lighting',
+  'B/9.49':'security level 3 monitoring surveillance lighting underwater',
+  'B/9.51':'interfacing procedures ships ports not covered',
+  'A/10.1':'records of security activities',
+  'B/13.1':'knowledge training company ship security officer',
+  'B/13.2':'ship security officer knowledge training',
+  'B/13.3':'shipboard personnel security duties knowledge training',
+  'B/13.4':'shipboard personnel familiar provisions'
+};
+/* required security level implied by the parent title's clause number */
+const LEVEL_BY_CLAUSE = {
+  'A/7.2':'1',
+  'B/9.14':'1','B/9.15':'1','B/9.16':'2','B/9.17':'3',
+  'B/9.22':'1','B/9.23':'2','B/9.24':'3',
+  'B/9.27':'1','B/9.30':'2','B/9.32':'3',
+  'B/9.35':'1','B/9.36':'2','B/9.37':'3',
+  'B/9.39':'1','B/9.40':'2','B/9.41':'3',
+  'B/9.45':'1','B/9.47':'2','B/9.49':'3'
+};
+function clauseCtx(item){
+  const c = isspClause(item.q);
+  if(!c.part || !c.num) return {ctx:null, level:null, parentKey:null};
+  const comps = c.num.split('.').filter(x=>/^\d+$/.test(x));
+  if(!comps.length) return {ctx:null, level:null, parentKey:null};
+  const parentKey = c.part + '/' + comps.slice(0,2).join('.');
+  const frag = /^[a-z]/.test(item.q.trim()) || comps.length>=3;
+  return {
+    ctx: frag ? (PARENT_CTX[parentKey] || null) : null,
+    level: LEVEL_BY_CLAUSE[parentKey] || null,
+    parentKey
+  };
 }
 
 /* nearest detected heading at or above a page */
@@ -841,7 +936,10 @@ function decideLocal(item, secYes, ctx){
   }
 
   /* --- meaning-oriented evidence scan: concept groups, exact chapter --- */
-  const groups = buildGroups(q);
+  let groups = buildGroups(q);
+  const ci = clauseCtx(item);   // numbered-title / lettered-subtitle understanding
+  let ctxGroups = ci.ctx ? buildGroups(ci.ctx).filter(g=>!groups.some(o=>o[0]===g[0])) : [];
+  if(groups.length===0 && ctxGroups.length){ groups = ctxGroups; ctxGroups = []; }
   let scan = scanGroups(groups, pages, fromPage);
   if(isSsa && fromPage>1 && scan.found.size===0){
     scan = scanGroups(groups, pages, 1);   // SSA material may sit outside the detected range
@@ -860,7 +958,7 @@ function decideLocal(item, secYes, ctx){
   if(scan.found.size===1 && groups.length>=4) return notEvident('only an isolated term trace was found \u2014 the requirement is not addressed as a provision');
 
   /* anchor the item to the exact chapter that best fits it, judge inside it */
-  const sec = pickSection(map, pages, groups, fromPage);
+  const sec = pickSection(map, pages, groups, ctxGroups, fromPage);
   let bestPage = scan.bestPage, inSec = scan.found;
   if(sec){
     const s = scanGroups(groups, pages, sec.from, sec.to);
@@ -871,12 +969,15 @@ function decideLocal(item, secYes, ctx){
   }
   const secCov = inSec.size/groups.length;
   const also = (scan.best2Page>0 && scan.best2Page!==bestPage && scan.best2Score>=scan.bestScore*0.6) ? ' (also p.'+scan.best2Page+')' : '';
-  const head = bestHeadingFor(map, bestPage, groups) || sec;   // cite the heading that actually contains the evidence
+  const head = bestHeadingFor(map, bestPage, groups.concat(ctxGroups), pages[bestPage-1])
+            || (sec && bestPage>=sec.from && bestPage<=sec.to ? sec : null)
+            || nearestHeading(map, bestPage);   // in-page attribution > picked chapter > position
   const loc = headingLabel(head, bestPage, prefix) + also;
 
   /* meaning checks: required security-level context + provision co-occurrence */
   const lvlM = q.match(/security level\s*([123])\b/i);
-  const needLvl = (lvlM && !/three security levels|each security level|all security levels/i.test(q)) ? lvlM[1] : null;
+  const ownLvl = (lvlM && !/three security levels|each security level|all security levels/i.test(q)) ? lvlM[1] : null;
+  const needLvl = ownLvl || ci.level;   // the parent title's clause number implies the level for lettered sub-items
   let lvlOk = true;
   if(needLvl){
     const lvlRe = new RegExp('(security\\s+)?level\\s*0?'+needLvl+'\\b|marsec\\s*(level\\s*)?'+needLvl+'\\b');
@@ -890,7 +991,7 @@ function decideLocal(item, secYes, ctx){
     return {ref: loc, ans:'yes', why:''};
   }
   let vwhy = 'reviewer to verify the provision fully implements the requirement';
-  if(!lvlOk) vwhy = 'topic located, but security level '+needLvl+' context is not confirmed at the cited chapter \u2014 verify the level-'+needLvl+' specific measures';
+  if(!lvlOk) vwhy = 'topic located, but security level '+needLvl+' context'+(ownLvl?'':' (required by parent title '+ci.parentKey+')')+' is not confirmed at the cited chapter \u2014 verify the level-'+needLvl+' specific measures';
   else if(inSec.size>=2 && groups.length>=3 && !cooc) vwhy = 'related terms found dispersed in the chapter \u2014 verify it addresses the requirement as a coherent provision';
   return {ref: loc, ans:'partial', why: vwhy};
 }

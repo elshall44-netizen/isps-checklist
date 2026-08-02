@@ -39,7 +39,8 @@ For every checklist item the engine builds a set of required **concepts** — th
 1. locates the **exact chapter** whose page range covers the most required concepts and judges the item *inside* that chapter;
 2. checks **security-level context**: an item about level 1/2/3 measures is only a full Yes when the cited chapter actually refers to that level (otherwise "Partially addressed — level-N context not confirmed");
 3. checks **co-occurrence**: concepts must appear together as a provision (within a few lines), not scattered across the plan — otherwise "terms dispersed — verify";
-4. rejects **isolated traces**: a single stray word among many required concepts is treated as Not Evident, not a match.
+4. rejects **isolated traces**: a single stray word among many required concepts is treated as Not Evident, not a match;
+5. understands the checklist's **hierarchy** — numbered titles with lettered sub-items: a sub-item (e.g. "escorting visitors on the ship?" under B/9.16) is judged in its parent title's context, which contributes concepts for chapter selection and the **required security level implied by the clause number** (B/9.14→L1, B/9.16→L2, B/9.17→L3, and likewise for restricted areas, cargo, stores, baggage and monitoring); when a page holds several headings, the evidence is attributed to the exact heading it sits under.
 
 The review follows the ISPS desktop-review workflow (desktop assessment prior to the initial audit) and records each item using the workflow vocabulary:
 
