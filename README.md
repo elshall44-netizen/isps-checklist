@@ -33,8 +33,13 @@ Section 1 (SSA & On-Scene Survey) references are taken **only from the SSA** —
 ### 1. Structure mapping
 The PDF is extracted page by page and headings are detected (SECTION / CHAPTER / PART / APPENDIX / ANNEX, plus numbered headings like `2.10 Records`). Table-of-contents duplicates are superseded by body headings, so every entry carries the real page number. The document map is shown in the results panel.
 
-### 2. Evidence-based cross-reference
-For every checklist item the engine extracts the question's distinctive terms and searches the actual plan text for them:
+### 2. Meaning-oriented, chapter-exact cross-reference
+For every checklist item the engine builds a set of required **concepts** — the question's distinctive terms expanded through a maritime-security synonym dictionary (CCTV ↔ surveillance ↔ camera ↔ patrol, DoS ↔ Declaration of Security, gangway ↔ accommodation ladder ↔ brow, x-ray ↔ screening, stores ↔ provisions, …) with light stemming — then:
+
+1. locates the **exact chapter** whose page range covers the most required concepts and judges the item *inside* that chapter;
+2. checks **security-level context**: an item about level 1/2/3 measures is only a full Yes when the cited chapter actually refers to that level (otherwise "Partially addressed — level-N context not confirmed");
+3. checks **co-occurrence**: concepts must appear together as a provision (within a few lines), not scattered across the plan — otherwise "terms dispersed — verify";
+4. rejects **isolated traces**: a single stray word among many required concepts is treated as Not Evident, not a match.
 
 The review follows the ISPS desktop-review workflow (desktop assessment prior to the initial audit) and records each item using the workflow vocabulary:
 
@@ -103,4 +108,4 @@ Each run then archives the SSP, the completed checklist and the summary to `isps
 
 - PDF text extraction needs a **text-based** SSP (not a scanned image). Scanned plans need OCR first — the app detects this and refuses with a clear message.
 - The checklist form embedded in the app is MSC-CKS-00009 Rev 3 (editable form fields are preserved in the output). To swap in a new revision, re-embed its base64 in `CHECKLIST_B64` inside `index.html`.
-- The engine matches text, not meaning: expect some flagged items on plans that use unusual wording — those flags are the "go check this" list, not final findings.
+- The engine approximates meaning (synonyms, chapter scoping, level context, co-occurrence) but it is still not a human reviewer: "Partially addressed" and "Not Evident" flags are the "go check this" list, not final findings, and a full Yes still deserves a read of the cited chapter.

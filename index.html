@@ -298,9 +298,9 @@
   <div class="ai-panel">
     <div class="head">
       <h4>Analysis engine</h4>
-      <span class="mode-chip ai" id="mode-chip">Standalone · runs offline</span>
+      <span class="mode-chip ai" id="mode-chip">Standalone · meaning &amp; chapter matching</span>
     </div>
-    <p class="sub">Everything runs inside your browser — no account, no API, no billing, and the plan never leaves this device. This is a <b style="color:#c7d8e2">desktop assessment prior to the initial audit</b>: every checklist item is recorded as <b style="color:#c7d8e2">Yes</b> (evidence located, real section &amp; page cited), <b style="color:#c7d8e2">Partially Addressed</b> (located but the reviewer must verify implementation), <b style="color:#c7d8e2">Not Evident</b> (no provision located — amendment or supporting evidence required), <b style="color:#c7d8e2">No</b> (conflicts with the requirement) or <b style="color:#c7d8e2">N/A</b>. Document control, language and revision status are checked automatically, and the summary states a suggested review outcome. The result is a documented draft — the reviewer confirms substance against the plan and signs.</p>
+    <p class="sub">Everything runs inside your browser — no account, no API, no billing, and the plan never leaves this device. This is a <b style="color:#c7d8e2">desktop assessment prior to the initial audit</b>: every checklist item is recorded as <b style="color:#c7d8e2">Yes</b> (evidence located, real section &amp; page cited), <b style="color:#c7d8e2">Partially Addressed</b> (located but the reviewer must verify implementation), <b style="color:#c7d8e2">Not Evident</b> (no provision located — amendment or supporting evidence required), <b style="color:#c7d8e2">No</b> (conflicts with the requirement) or <b style="color:#c7d8e2">N/A</b>. Document control, language and revision status are checked automatically, and the summary states a suggested review outcome. Matching is meaning-oriented: maritime-security synonyms are recognised (CCTV ↔ surveillance, DoS ↔ Declaration of Security, gangway ↔ accommodation ladder…), every item is anchored to the <b style="color:#c7d8e2">exact chapter</b> that best fits the requirement and judged inside it, and level-specific items are checked for genuine security level 1 / 2 / 3 context at the cited chapter. The result is a documented draft — the reviewer confirms substance against the plan and signs.</p>
   </div>
 
   <!-- Review details (optional; flows into the summary report) -->
@@ -638,6 +638,128 @@ function keyTerms(q){
   return out;
 }
 
+/* ---------- meaning layer: maritime-security concept synonyms ---------- */
+const CONCEPTS = [
+  [/declaration of security/i, ['declaration of security',' dos ']],
+  [/security level|three security levels/i, ['security level','marsec','alert stat']],
+  [/unaccompanied baggage/i, ['unaccompanied bag']],
+  [/baggage|personal effects/i, ['baggage','personal effects','luggage','carry-on']],
+  [/x-?ray|screening/i, ['x-ray','xray','x ray','screen','scanning']],
+  [/search|inspection/i, ['search','inspect','examination']],
+  [/gangway|access ladders|access ramp/i, ['gangway','accommodation ladder','brow','ramp','pilot ladder']],
+  [/lighting/i, ['lighting','illuminat','floodlight','deck light']],
+  [/surveillance|monitoring|monitor/i, ['surveillance','monitor','cctv','camera','watch','lookout','patrol']],
+  [/patrol/i, ['patrol','rounds','roving']],
+  [/restricted area/i, ['restricted area','restricted space','authorized personnel only']],
+  [/ship security alert|ssas/i, ['ship security alert','ssas','covert alert']],
+  [/alarm/i, ['alarm','audible','alert signal']],
+  [/drills|drill |exercise/i, ['drill','exercise']],
+  [/training/i, ['training','familiari','instruction','course']],
+  [/record/i, ['record','log','retention','retained','documentation']],
+  [/weapons|firearm|dangerous substances|dangerous devices/i, ['weapon','firearm','arms','ammunition','explosive','dangerous substance','dangerous device']],
+  [/dangerous goods|hazardous/i, ['dangerous goods','hazardous','imdg','manifest']],
+  [/ship.?s stores|stores/i, ['stores','provisions','supplies','delivery note','deliveries']],
+  [/cargo/i, ['cargo','container','loading','stowage']],
+  [/identification|identity/i, ['identification','identity','id card',' pass','badge','boarding pass']],
+  [/access/i, ['access','entry','boarding','embark']],
+  [/communication/i, ['communication','radio','uhf','vhf','contact list']],
+  [/audit/i, ['audit','review','verification']],
+  [/incident|breach/i, ['incident','breach','suspicious','report']],
+  [/evacuat/i, ['evacuat','muster','assembly station']],
+  [/stowaway/i, ['stowaway']],
+  [/piracy|armed robbery|hijack/i, ['piracy','pirate','armed robbery','hijack','bmp','citadel','high risk area']],
+  [/lock|keys/i, ['lock','key control','padlock','secured']],
+  [/seals?/i, ['seal']],
+  [/inventory/i, ['inventory','tally','manifest']],
+  [/port facility|pfso/i, ['port facility','pfso','terminal']],
+  [/master.?s overriding authority/i, ['overriding authority']],
+  [/waterside|seaward/i, ['waterside','seaward','boat patrol','small craft']],
+  [/computer|cyber|network/i, ['computer','cyber','network']],
+];
+
+function stem4(w){
+  let s = w;
+  if(/ies$/.test(s)) s = s.slice(0,-3);
+  else s = s.replace(/(ings?|ed|es|s)$/,'');
+  return s.length>=4 ? s : w;
+}
+
+/* one "group" per required concept: [variant,...]; a group counts as found
+   when ANY variant appears — this is what lets wording differ from the Code */
+function buildGroups(q){
+  const groups=[]; const seen=new Set();
+  for(const [re, variants] of CONCEPTS){
+    if(re.test(q)){
+      const key='c:'+variants[0];
+      if(!seen.has(key)){ seen.add(key); groups.push(variants); }
+    }
+  }
+  for(const w of keyTerms(q)){
+    const st = stem4(w);
+    if(seen.has('t:'+st)) continue;
+    seen.add('t:'+st);
+    if(groups.some(g=>g.some(v=>v.includes(st)||st.includes(v.trim().split(' ')[0])))) continue;
+    groups.push([st]);
+  }
+  return groups;
+}
+
+function scanGroups(groups, lowerPages, fromPage=1, toPage=1e9){
+  let bestPage=-1, bestScore=0, best2Page=-1, best2Score=0; const found=new Set();
+  lowerPages.forEach((txt,i)=>{
+    const p=i+1; if(p<fromPage || p>toPage) return;
+    let score=0;
+    groups.forEach((g,gi)=>{
+      if(g.some(v=>txt.includes(v))){ found.add(gi); score += Math.max(...g.map(v=>v.length)); }
+    });
+    if(score>bestScore){ best2Score=bestScore; best2Page=bestPage; bestScore=score; bestPage=p; }
+    else if(score>best2Score){ best2Score=score; best2Page=p; }
+  });
+  return {found, bestPage, bestScore, best2Page, best2Score};
+}
+
+/* the exact chapter/section whose page range covers the most required concepts */
+function pickSection(map, lowerPages, groups, fromPage){
+  let best=null, bestN=0;
+  for(let i=0;i<map.length;i++){
+    const from=map[i].page;
+    let to=lowerPages.length;
+    for(let j=i+1;j<map.length;j++){ if(map[j].page>from){ to=map[j].page; break; } }
+    if(to<fromPage) continue;
+    const s=scanGroups(groups, lowerPages, Math.max(from,fromPage), to);
+    if(s.found.size>bestN){ bestN=s.found.size; best={id:map[i].id, title:map[i].title, page:map[i].page, from:Math.max(from,fromPage), to}; }
+  }
+  return best;
+}
+
+/* when several headings share the evidence page, cite the one whose title
+   matches the requirement's concepts */
+function bestHeadingFor(map, page, groups){
+  const before = nearestHeading(map, page);
+  const cands = map.filter(e=>e.page===page);
+  if(before && !cands.some(e=>e===before)) cands.unshift(before);
+  if(!cands.length) return before;
+  let best=null, bestN=0;
+  for(const e of cands){
+    const t=(e.id+' '+(e.title||'')).toLowerCase();
+    let n=0; for(const g of groups){ if(g.some(v=>t.includes(v.trim()))) n++; }
+    if(n>bestN){ bestN=n; best=e; }
+  }
+  return best || before || cands[cands.length-1];
+}
+
+/* a provision, not scattered words: >=2 concepts within a 3-line window */
+function coOccurs(pageTxt, groups){
+  if(groups.length<3) return true;
+  const lines=(pageTxt||'').split('\n');
+  for(let i=0;i<lines.length;i++){
+    const win=(lines[i-1]||'')+' '+lines[i]+' '+(lines[i+1]||'');
+    let n=0;
+    for(const g of groups){ if(g.some(v=>win.includes(v))){ n++; if(n>=2) return true; } }
+  }
+  return false;
+}
+
 /* nearest detected heading at or above a page */
 function nearestHeading(docMap, page){
   let best=null;
@@ -718,32 +840,59 @@ function decideLocal(item, secYes, ctx){
     pages=ctx.sspLower; map=ctx.docMap; prefix='SSP';
   }
 
-  const terms = keyTerms(q);
-  let hit = searchDoc(terms, pages, fromPage);
-  if(isSsa && fromPage>1 && hit.found.size===0){
-    hit = searchDoc(terms, pages, 1);   // SSA material may sit outside the detected range
+  /* --- meaning-oriented evidence scan: concept groups, exact chapter --- */
+  const groups = buildGroups(q);
+  let scan = scanGroups(groups, pages, fromPage);
+  if(isSsa && fromPage>1 && scan.found.size===0){
+    scan = scanGroups(groups, pages, 1);   // SSA material may sit outside the detected range
+    fromPage = 1;
   }
-  const strong  = hit.found.size>=2 && hit.coverage>=0.34;
-  const partial = !strong && hit.found.size>=1 && hit.coverage>=0.2;
 
-  const loc = hit.bestPage>0
-    ? headingLabel(nearestHeading(map, hit.bestPage), hit.bestPage, prefix)
-      + (hit.best2Page>0 && hit.best2Page!==hit.bestPage && hit.best2Score>=hit.bestScore*0.6 ? ' (also p.'+hit.best2Page+')' : '')
-    : '';
-  if(strong || (terms.length<=2 && hit.found.size>=1)){
+  const notEvident = (extra) => {
+    const exMap = isCsp ? ctx.cspMap : ((isSsa && ctx.ssaLower) ? ctx.ssaMap : ctx.docMap);
+    const expected = withPages((isSsa ? ssaRef(q) : sspRef(q)).split(';')[0], exMap);
+    let why = (extra||'no provision matching this requirement was located in the document text')+' \u2014 required at '+expected+' \u2014 amendment or supporting evidence required';
+    if(/ISPS Code A\/13/i.test(q)) why += '; CSO/SSO training evidence per A/13.1: recommend corrective action and record as a nonconformity if evidence is not provided';
+    return {ref:'Not Evident \u2014 not located in '+(isCsp?'CSP':(isSsa?'SSA':'SSP'))+' text', ans:'notevident', why};
+  };
+
+  if(groups.length===0 || scan.found.size===0) return notEvident();
+  if(scan.found.size===1 && groups.length>=4) return notEvident('only an isolated term trace was found \u2014 the requirement is not addressed as a provision');
+
+  /* anchor the item to the exact chapter that best fits it, judge inside it */
+  const sec = pickSection(map, pages, groups, fromPage);
+  let bestPage = scan.bestPage, inSec = scan.found;
+  if(sec){
+    const s = scanGroups(groups, pages, sec.from, sec.to);
+    if(s.found.size >= Math.max(1, Math.floor(scan.found.size*0.6))){
+      bestPage = s.bestPage>0 ? s.bestPage : sec.from;
+      inSec = s.found;
+    }
+  }
+  const secCov = inSec.size/groups.length;
+  const also = (scan.best2Page>0 && scan.best2Page!==bestPage && scan.best2Score>=scan.bestScore*0.6) ? ' (also p.'+scan.best2Page+')' : '';
+  const head = bestHeadingFor(map, bestPage, groups) || sec;   // cite the heading that actually contains the evidence
+  const loc = headingLabel(head, bestPage, prefix) + also;
+
+  /* meaning checks: required security-level context + provision co-occurrence */
+  const lvlM = q.match(/security level\s*([123])\b/i);
+  const needLvl = (lvlM && !/three security levels|each security level|all security levels/i.test(q)) ? lvlM[1] : null;
+  let lvlOk = true;
+  if(needLvl){
+    const lvlRe = new RegExp('(security\\s+)?level\\s*0?'+needLvl+'\\b|marsec\\s*(level\\s*)?'+needLvl+'\\b');
+    const range = sec ? pages.slice(sec.from-1, sec.to) : [pages[bestPage-1]||''];
+    lvlOk = range.some(t=>lvlRe.test(t));
+  }
+  const cooc = coOccurs(pages[bestPage-1]||'', groups);
+
+  const strong = inSec.size>=2 && secCov>=0.5 && (groups.length<3 || cooc);
+  if((strong || (groups.length<=2 && scan.found.size>=1)) && lvlOk){
     return {ref: loc, ans:'yes', why:''};
   }
-  if(partial){
-    return {ref: loc, ans:'partial',
-            why:'reviewer to verify the provision fully implements the requirement'};
-  }
-  /* nothing located → Not Evident: missing evidence, company response required.
-     The expected section is cited with its detected page in the plan, when found. */
-  const exMap = isCsp ? ctx.cspMap : ((isSsa && ctx.ssaLower) ? ctx.ssaMap : ctx.docMap);
-  const expected = withPages((isSsa ? ssaRef(q) : sspRef(q)).split(';')[0], exMap);
-  let why = 'no provision matching this requirement was located in the document text — required at '+expected+' — amendment or supporting evidence required';
-  if(/ISPS Code A\/13/i.test(q)) why += '; CSO/SSO training evidence per A/13.1: recommend corrective action and record as a nonconformity if evidence is not provided';
-  return {ref:'Not Evident — not located in '+(isCsp?'CSP':(isSsa?'SSA':'SSP'))+' text', ans:'notevident', why};
+  let vwhy = 'reviewer to verify the provision fully implements the requirement';
+  if(!lvlOk) vwhy = 'topic located, but security level '+needLvl+' context is not confirmed at the cited chapter \u2014 verify the level-'+needLvl+' specific measures';
+  else if(inSec.size>=2 && groups.length>=3 && !cooc) vwhy = 'related terms found dispersed in the chapter \u2014 verify it addresses the requirement as a coherent provision';
+  return {ref: loc, ans:'partial', why: vwhy};
 }
 
 
@@ -1176,7 +1325,7 @@ function renderFindings(findings){
   $('findings-ne').innerHTML = nes.length ? nes.map(mk).join('') :
     '<div class="finding na"><div class="fq">None — every applicable requirement was located in the submitted documents.</div></div>';
   $('findings-partial').innerHTML = parts.length ? parts.map(f=>
-    `<div class="finding na"><div class="fq"><b>Item ${f.row}.</b> ${hesc(shorten(f.q,160))}</div><div class="fmeta">${hesc(f.ref||'')}</div></div>`).join('') :
+    `<div class="finding na"><div class="fq"><b>Item ${f.row}.</b> ${hesc(shorten(f.q,160))}</div><div class="fmeta">${hesc(f.why||'')}${f.why?'<br>':''}${hesc(f.ref||'')}</div></div>`).join('') :
     '<div class="finding na"><div class="fq">None.</div></div>';
   $('findings-na').innerHTML = nas.length ? nas.map(f=>
     `<div class="finding na"><div class="fq"><b>Item ${f.row}.</b> ${hesc(shorten(f.q,160))}</div><div class="fmeta">${hesc(f.why||f.ref||'')}</div></div>`).join('') :
