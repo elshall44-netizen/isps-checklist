@@ -168,11 +168,12 @@
   @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
   .result h3{font-family:var(--disp);margin:0 0 4px;font-size:20px;color:var(--ink)}
   .result .vessel{font-family:var(--mono);font-size:12px;color:var(--teal-deep);letter-spacing:.5px;margin-bottom:20px}
-  .tally{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:22px}
+  .tally{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:22px}
+  @media(max-width:720px){.tally{grid-template-columns:repeat(3,1fr)}}
   .tally .cell{border-radius:11px;padding:16px;text-align:center;border:1px solid var(--paper-2)}
   .tally .cell .n{font-family:var(--disp);font-weight:700;font-size:30px;line-height:1}
   .tally .cell .l{font-family:var(--mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--slate);margin-top:7px}
-  .tally .yes .n{color:var(--green)} .tally .no .n{color:var(--red)} .tally .na .n{color:var(--slate-dk)}
+  .tally .yes .n{color:var(--green)} .tally .partial .n{color:var(--amber-deep)} .tally .ne .n{color:#c2570c} .tally .no .n{color:var(--red)} .tally .na .n{color:var(--slate-dk)}
 
   .dl-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px}
   .dl{display:inline-flex;align-items:center;gap:10px;text-decoration:none;background:var(--ink);color:var(--white);font-family:var(--disp);font-weight:600;font-size:15px;padding:15px 24px;border-radius:11px;transition:.15s}
@@ -189,6 +190,10 @@
   .finding .fq{font-size:13px;color:var(--ink);line-height:1.5}
   .finding .fmeta{font-family:var(--mono);font-size:11px;color:var(--red-deep);margin-top:6px;line-height:1.55;word-break:break-word}
   .finding.na .fmeta{color:var(--slate-dk)}
+  .finding.ne{border-color:#f3ddc4;background:#fdf7ee}
+  .finding.ne .fmeta{color:#9a5b00}
+  .rd-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+  @media(max-width:920px){.rd-grid{grid-template-columns:1fr 1fr}}
   .sumpre{white-space:pre-wrap;font-size:13.5px;line-height:1.65;color:#243b4d;background:var(--paper-2);border-radius:10px;padding:16px 18px;margin:0}
   details.fold{border:1px solid var(--paper-2);border-radius:10px;padding:10px 14px;margin-bottom:10px}
   details.fold summary{cursor:pointer;font-family:var(--mono);font-size:12px;color:var(--teal-deep);letter-spacing:.5px}
@@ -266,7 +271,22 @@
       <h4>Analysis engine</h4>
       <span class="mode-chip ai" id="mode-chip">Standalone · runs offline</span>
     </div>
-    <p class="sub">Everything runs inside your browser — no account, no API, no billing, and the plan never leaves this device. For every checklist item the engine searches the actual plan text for evidence of the requirement: where it finds it, the answer is Yes with the real section and page it located; where it cannot find it, the item is flagged <b style="color:#c7d8e2">No — not located, verify</b> with the expected location, so gaps surface instead of being silently ticked Yes. The result is a documented draft — the auditor confirms substance against the plan and signs.</p>
+    <p class="sub">Everything runs inside your browser — no account, no API, no billing, and the plan never leaves this device. This is a <b style="color:#c7d8e2">desktop assessment prior to the initial audit</b>: every checklist item is recorded as <b style="color:#c7d8e2">Yes</b> (evidence located, real section &amp; page cited), <b style="color:#c7d8e2">Partially Addressed</b> (located but the reviewer must verify implementation), <b style="color:#c7d8e2">Not Evident</b> (no provision located — amendment or supporting evidence required), <b style="color:#c7d8e2">No</b> (conflicts with the requirement) or <b style="color:#c7d8e2">N/A</b>. Document control, language and revision status are checked automatically, and the summary states a suggested review outcome. The result is a documented draft — the reviewer confirms substance against the plan and signs.</p>
+  </div>
+
+  <!-- Review details (optional; flows into the summary report) -->
+  <div class="ai-panel">
+    <div class="head">
+      <h4>Review details</h4>
+      <span class="mode-chip">optional · appears in the summary</span>
+    </div>
+    <div class="rd-grid">
+      <div class="ai-field"><label for="rd-reviewer">Reviewer / auditor</label><input type="text" id="rd-reviewer" autocomplete="off" /></div>
+      <div class="ai-field"><label for="rd-date">Review date</label><input type="text" id="rd-date" placeholder="YYYY-MM-DD" autocomplete="off" /></div>
+      <div class="ai-field"><label for="rd-wo">Report / WO No.</label><input type="text" id="rd-wo" autocomplete="off" /></div>
+      <div class="ai-field"><label for="rd-flag">Flag State</label><input type="text" id="rd-flag" autocomplete="off" /></div>
+      <div class="ai-field"><label for="rd-company">Company</label><input type="text" id="rd-company" autocomplete="off" /></div>
+    </div>
   </div>
 
   <!-- SEC notation toggle -->
@@ -299,6 +319,8 @@
     <div class="vessel" id="res-vessel"></div>
     <div class="tally">
       <div class="cell yes"><div class="n" id="t-yes">0</div><div class="l">Yes</div></div>
+      <div class="cell partial"><div class="n" id="t-partial">0</div><div class="l">Partially</div></div>
+      <div class="cell ne"><div class="n" id="t-ne">0</div><div class="l">Not Evident</div></div>
       <div class="cell no"><div class="n" id="t-no">0</div><div class="l">No</div></div>
       <div class="cell na"><div class="n" id="t-na">0</div><div class="l">N / A</div></div>
     </div>
@@ -313,14 +335,25 @@
       </a>
     </div>
 
+    <div class="rblock">
+      <h4>Review basis &amp; document control</h4>
+      <pre class="sumpre" id="basis-pre"></pre>
+    </div>
+
     <div class="rblock" id="blk-summary">
-      <h4>Summary of gaps &amp; observations</h4>
+      <h4>Review summary — outcome, findings &amp; open items</h4>
       <pre class="sumpre" id="sum-text"></pre>
     </div>
 
     <div class="rblock" id="blk-findings">
-      <h4>“No” findings — documented basis<span class="cnt" id="no-cnt"></span></h4>
+      <h4>Nonconformities / deficiencies (No)<span class="cnt" id="no-cnt"></span></h4>
       <div id="findings-no"></div>
+      <h4 style="margin-top:18px">Missing evidence (Not Evident) — open items requiring company response<span class="cnt" id="ne-cnt"></span></h4>
+      <div id="findings-ne"></div>
+      <details class="fold" id="fold-partial">
+        <summary>Partially addressed — reviewer to verify</summary>
+        <div id="findings-partial" style="margin-top:10px"></div>
+      </details>
       <details class="fold" id="fold-na">
         <summary>Items marked N/A</summary>
         <div id="findings-na" style="margin-top:10px"></div>
@@ -619,7 +652,7 @@ function decideLocal(item, secYes, ctx){
   if(isCspRow(r)){
     if(!secYes) return {ref:'NA', ans:'na', why:''};
     if(/kept for at least 5 years/i.test(q)) return {ref:withPages('§2.10 Records',ctx.docMap), ans:'no', why:'confirm retention period — ABS Guide 4/6.2(e) requires 5 years and SSPs commonly state 2'};
-    if(/does the company have a company security plan/i.test(q)) return {ref:'Not found in SSP', ans:'no', why:'the CSP is a separate company document — request it from the company'};
+    if(/does the company have a company security plan/i.test(q)) return {ref:'Not Evident', ans:'notevident', why:'the CSP is a separate company document — missing evidence; request it from the company'};
   }
   for(const re of NA_KW){ if(re.test(q)) return {ref:sspRef(q), ans:'na', why:'ro-ro / vehicle provisions not applicable to this vessel'}; }
   if(/kept in an electronic format/i.test(q)) return {ref:'§1.4', ans:'na', why:'applies only if the SSP is kept electronically — confirm'};
@@ -653,25 +686,135 @@ function decideLocal(item, secYes, ctx){
     return {ref: headingLabel(nearestHeading(map, hit.bestPage), hit.bestPage, prefix), ans:'yes', why:''};
   }
   if(partial){
-    return {ref: headingLabel(nearestHeading(map, hit.bestPage), hit.bestPage, prefix)+' — verify', ans:'yes', why:''};
+    return {ref: headingLabel(nearestHeading(map, hit.bestPage), hit.bestPage, prefix), ans:'partial',
+            why:'reviewer to verify the provision fully implements the requirement'};
   }
-  /* nothing located → surface it as a gap instead of silently ticking Yes */
+  /* nothing located → Not Evident: missing evidence, company response required */
   const expected = (isSsa ? ssaRef(q) : sspRef(q)).split(';')[0];
-  return {ref:'Not located in '+(isSsa?'SSA':'SSP')+' text', ans:'no',
-          why:'no provision matching this requirement was found in the document text — verify manually (expected at '+expected+')'};
+  let why = 'no provision matching this requirement was located in the document text (expected at '+expected+') — amendment or supporting evidence required';
+  if(/ISPS Code A\/13/i.test(q)) why += '; CSO/SSO training evidence per A/13.1: recommend corrective action and record as a nonconformity if evidence is not provided';
+  return {ref:'Not Evident — not located in '+(isSsa?'SSA':'SSP')+' text', ans:'notevident', why};
 }
 
-function localSummary(vessel, secYes, findings, tally){
-  const nos = findings.filter(f=>f.ans==='no');
-  const nas = findings.filter(f=>f.ans==='na');
-  let s = `SHIP SECURITY PLAN REVIEW — SUMMARY OF GAPS & OBSERVATIONS\n`;
-  s += `Vessel: ${vessel.name||'n/a'}   Class/IMO: ${vessel.classId||'n/a'}   SEC notation: ${secYes?'Yes':'No'}\n`;
-  s += `Result: ${tally.yes} Yes · ${tally.no} No · ${tally.na} N/A   (engine: standalone document cross-reference — the auditor verifies substance against the plan)\n\n`;
-  s += `GAPS ("No" findings)\n`;
-  s += nos.length ? nos.map(f=>`• Row ${f.row}: ${f.q}\n   Basis: ${f.why||'see reference'} [${f.ref}]`).join('\n') : '• None.';
-  s += `\n\nNOT APPLICABLE\n`;
-  s += nas.length ? nas.map(f=>`• Row ${f.row}: ${shorten(f.q,110)} — ${f.why||f.ref}`).join('\n') : '• None.';
-  s += `\n\nNOTE\nPer the checklist footnote, for every "No" the company must provide additional documented evidence that the deficiency is satisfactorily addressed; attach that evidence and the auditor's acceptance to this checklist.`;
+
+/* ---------- workspace-workflow helpers ---------- */
+function reviewDetails(){
+  const v = id => { const el=$(id); return el && el.value ? el.value.trim() : ''; };
+  return { reviewer:v('rd-reviewer'), date:v('rd-date')||new Date().toISOString().slice(0,10),
+           wo:v('rd-wo'), flag:v('rd-flag'), company:v('rd-company') };
+}
+
+/* steps 2-3: document control, revision status, language */
+function docControl(sspPages){
+  const all = sspPages.join('\n');
+  const rev = all.match(/\b(?:rev(?:ision)?|issue)\s*(?:no\.?|number)?\s*[:#.\-]?\s*([0-9]{1,2}[A-Z]?|[A-Z])\b/i);
+  const revDate = all.match(/\b(?:revision date|date of issue|issued?(?: on)?|dated)\s*[:\-]?\s*([0-9]{1,2}[\/\-. ][0-9]{1,2}[\/\-. ][0-9]{2,4}|[0-9]{1,2}\s+[A-Za-z]+\s+[0-9]{4}|[A-Za-z]+\s+[0-9]{4})/i);
+  const controlled = /controlled (?:copy|document)|document control|control(?:led)? no/i.test(all);
+  const history = /revision history|record of revisions?|amendment (?:record|log|history)|list of amendments/i.test(all);
+  const protection = /unauthori[sz]ed (?:deletion|destruction|amendment)|password|access control|back.?up|electronic protection/i.test(all);
+  const s = all.slice(0,30000).toLowerCase();
+  const en = (s.match(/\b(the|and|shall|ship|security)\b/g)||[]).length;
+  const es = (s.match(/\b(buque|protecci\u00f3n|deber\u00e1|cap\u00edtulo|seguridad)\b/g)||[]).length;
+  const fr = (s.match(/\b(navire|s\u00fbret\u00e9|doit|chapitre|s\u00e9curit\u00e9)\b/g)||[]).length;
+  const lang = (en>=es && en>=fr) ? 'English' : (es>=fr ? 'Spanish' : 'French');
+  return {rev:rev?rev[1]:null, revDate:revDate?revDate[1]:null, controlled, history, protection, lang};
+}
+
+/* step 9: suggested outcome (reviewer confirms) */
+function suggestOutcome(tally){
+  const gaps = tally.no + tally.notevident;
+  const applicable = tally.yes + tally.partial + tally.no + tally.notevident;
+  if(gaps===0) return {short:'acceptable for approval (suggested)',
+    text:'ACCEPTABLE FOR APPROVAL — no deficiencies or missing-evidence items were identified by this cross-reference, subject to the reviewer confirming the partially-addressed items and the substance of the located provisions.'};
+  if(gaps <= Math.ceil(applicable*0.15)) return {short:'acceptable subject to amendment (suggested)',
+    text:'ACCEPTABLE SUBJECT TO AMENDMENT — a limited number of deficiencies / missing-evidence items require a company response before approval; see the open items below.'};
+  return {short:'not acceptable in current form (suggested)',
+    text:'NOT ACCEPTABLE IN CURRENT FORM — substantial gaps were identified; the company should amend the SSP and resubmit with the required supporting evidence.'};
+}
+
+/* checklist subsection grouping (A-M) from the cited clause */
+function clauseNum(num){ const p=String(num||'').split('.').map(x=>parseInt(x,10)); return [p[0]||0, p[1]||0]; }
+function groupOf(item){
+  if(item.section===1) return '1) SSA & On-Scene Security Survey';
+  if(isCspRow(item.row)) return '3) SEC Notation — Company Security Plan';
+  const q=item.q;
+  if(/based on the ssa|accompanied by the ship security assessment/i.test(q)) return '2-L) SSP relation to the SSA';
+  const c=isspClause(q);
+  if(c.part==='ABS') return '3) SEC Notation — Company Security Plan';
+  if(c.part==='MSC' || /IACS PR24|best management/i.test(q)) return '2-M) Security Guidance & BMP';
+  const [m,n]=clauseNum(c.num);
+  if(c.part==='A'){
+    if(m===10) return '2-J) Records';
+    if(m===13) return '2-K) Training, Drills & Exercises';
+    return '2-A) General';
+  }
+  if(c.part==='B'){
+    if(m===10) return '2-J) Records';
+    if(m===13) return '2-K) Training, Drills & Exercises';
+    if(m===9){
+      if(n>=9&&n<=17) return '2-B) Access to the Ship';
+      if(n>=18&&n<=25) return '2-C) Restricted Areas';
+      if(n>=26&&n<=32) return '2-D) Handling of Cargo';
+      if(n>=33&&n<=37) return "2-E) Delivery of Ship's Stores";
+      if(n>=38&&n<=41) return '2-F) Unaccompanied Baggage';
+      if(n>=42&&n<=49) return '2-G) Monitoring the Security of the Ship';
+      if(n>=50&&n<=51) return '2-H) Differing Security Levels / Not-covered Activities';
+      if(n===52) return '2-I) Declaration of Security';
+    }
+  }
+  return '2-A) General';
+}
+
+/* steps 1-3: review basis statement */
+function reviewBasisText(dc, secYes, ssaSeparate, rd){
+  const L=[];
+  L.push('REVIEW BASIS');
+  L.push('Desktop assessment of the submitted Ship Security Plan, completed prior to the initial audit.');
+  L.push('Criteria: ISPS Code Part A (emphasis A/9.4.1\u2013A/9.4.18); ISPS Code Part B guidance (B/8.1\u2013B/13.8); applicable Flag State Special Instructions (FSSI); ABS Guide for Ship Security (SEC Guide)' + (secYes ? ' \u2014 SEC notation requested, SEC Guide items assessed.' : ' \u2014 SEC notation not requested, SEC Guide items N/A.'));
+  L.push('SSA: ' + (ssaSeparate ? 'submitted as a separate document; Section 1 referenced from the SSA document.' : 'included within the SSP; Section 1 referenced from the SSA part of the plan.'));
+  L.push('');
+  L.push('DOCUMENT CONTROL & SUBMISSION');
+  L.push('Format: PDF (electronic submission) \u2014 acceptable.');
+  L.push('Revision status: ' + (dc.rev ? ('revision indication found (\u201c'+dc.rev+'\u201d'+(dc.revDate?(', '+dc.revDate):'')+') \u2014 confirm this is the applicable revision level.') : 'NOT identified in the text \u2014 flag: request resubmission under a valid document control procedure.'));
+  L.push('Revision history: ' + (dc.history ? 'present (revision/amendment record found).' : 'NOT identified \u2014 flag for confirmation.'));
+  L.push('Controlled-document markings: ' + (dc.controlled ? 'found.' : 'NOT identified \u2014 flag for confirmation.'));
+  L.push('Electronic protection / access control: ' + (dc.protection ? 'referenced in the text \u2014 verify adequacy (loss of access, corruption, deletion, hardware failure).' : 'NOT identified \u2014 request the company to address protection, access control and recovery of the electronic SSP.'));
+  L.push('');
+  L.push('LANGUAGE');
+  L.push('Detected review language: ' + dc.lang + ' (English preferred; English / French / Spanish acceptable).');
+  L.push('This review is based only on the review language; any other-language content has not been checked for accuracy or completeness.');
+  L.push('');
+  L.push('FSSI: not assessed by this tool \u2014 the reviewer is to confirm the applicable Flag State Special Instructions' + (rd.flag ? (' ('+rd.flag+')') : '') + ' are addressed in the SSP.');
+  return L.join('\n');
+}
+
+function localSummary(vessel, secYes, findings, tally, rd, basisText, outcome){
+  const nos   = findings.filter(f=>f.ans==='no');
+  const nes   = findings.filter(f=>f.ans==='notevident');
+  const parts = findings.filter(f=>f.ans==='partial');
+  const nas   = findings.filter(f=>f.ans==='na');
+  const byGroup = arr => {
+    const g={}; arr.forEach(f=>{ (g[f.group]=g[f.group]||[]).push(f); });
+    return Object.keys(g).sort().map(k => k + '\n' + g[k].map(f =>
+      '  \u2022 Item '+f.row+': '+shorten(f.q,120)+'\n     Basis: '+(f.why||'see reference')+' ['+(f.ref||'\u2014')+']').join('\n')).join('\n');
+  };
+  let s  = 'SHIP SECURITY PLAN \u2014 DESKTOP REVIEW SUMMARY (prior to initial audit)\n';
+  s += 'Vessel: '+(vessel.name||'n/a')+'   Class/IMO: '+(vessel.classId||'n/a')+'   SEC notation: '+(secYes?'Yes':'No')+'\n';
+  s += 'Reviewer: '+(rd.reviewer||'\u2014')+'   Review date: '+rd.date+'   Report/WO: '+(rd.wo||'\u2014')+'   Flag: '+(rd.flag||'\u2014')+'   Company: '+(rd.company||'\u2014')+'\n';
+  s += 'Result: '+tally.yes+' Yes \u00b7 '+tally.partial+' Partially Addressed \u00b7 '+tally.notevident+' Not Evident \u00b7 '+tally.no+' No \u00b7 '+tally.na+' N/A\n';
+  s += 'Engine: standalone document cross-reference \u2014 the reviewer verifies substance against the plan.\n\n';
+  s += basisText + '\n\n';
+  s += 'SUGGESTED REVIEW OUTCOME (reviewer to confirm)\n' + outcome.text + '\n\n';
+  s += 'NONCONFORMITIES / DEFICIENCIES (No)\n' + (nos.length ? byGroup(nos) : '\u2022 None.') + '\n\n';
+  s += 'MISSING EVIDENCE (Not Evident) \u2014 OPEN ITEMS REQUIRING COMPANY RESPONSE\n' + (nes.length ? byGroup(nes) : '\u2022 None.') + '\n\n';
+  s += 'PARTIALLY ADDRESSED \u2014 REVIEWER TO VERIFY ('+parts.length+' ITEMS)\n' + (parts.length ? parts.map(f=>'\u2022 Item '+f.row+': '+shorten(f.q,110)+' ['+(f.ref||'')+']').join('\n') : '\u2022 None.') + '\n\n';
+  s += 'NOT APPLICABLE\n' + (nas.length ? nas.map(f=>'\u2022 Item '+f.row+': '+shorten(f.q,110)+' \u2014 '+(f.why||f.ref)).join('\n') : '\u2022 None.') + '\n\n';
+  s += 'CONFORMING ITEMS\n\u2022 '+tally.yes+' checklist items were located in the submitted documents with references recorded on the checklist form.\n\n';
+  s += 'APPROVAL & COMPLETION REMINDERS (ON SUCCESSFUL REVIEW)\n';
+  s += "\u2022 Issue the SSP approval letter as applicable: SSPRL (initial approval) or SSPARL (subsequent amendments); approval letters are Full Term.\n";
+  s += "\u2022 Import the completed letter into the work order.\n";
+  s += "\u2022 Stamp the SSP in accordance with ABS instructions.\n";
+  s += "\u2022 Per the checklist footnote, each 'No' must be closed out with the company's documented evidence, attached with the reviewer's acceptance.";
   return s;
 }
 function shorten(s,n){ return s.length>n ? s.slice(0,n-1)+'…' : s; }
@@ -720,6 +863,12 @@ function refCellText(d){
   if(d.ans==='no'){
     return (d.ref||'Not found in SSP') + (d.why ? ' — NO: '+d.why : '');
   }
+  if(d.ans==='notevident'){
+    return (d.ref||'Not Evident') + (d.why ? ' — '+d.why : '');
+  }
+  if(d.ans==='partial'){
+    return (d.ref||'') + ' — Partially addressed: ' + (d.why||'reviewer to verify');
+  }
   if(d.ans==='na'){
     if((d.ref||'').trim().toUpperCase()==='NA' && !d.why) return 'NA';
     return 'N/A' + (d.why ? ' — '+d.why : '') + (d.ref && d.ref.toUpperCase()!=='NA' ? ' ['+d.ref+']' : '');
@@ -737,8 +886,8 @@ async function buildDocx(items, decisions){
     const d = decisions[it.row];
     if(!d) continue;
     if(it.txt) xml = fillTextField(xml, it.txt, refCellText(d));
-    if(d.ans==='yes' && it.yes) xml = tickCheckbox(xml, it.yes);
-    else if(d.ans==='no' && it.no) xml = tickCheckbox(xml, it.no);
+    if((d.ans==='yes'||d.ans==='partial') && it.yes) xml = tickCheckbox(xml, it.yes);
+    else if((d.ans==='no'||d.ans==='notevident') && it.no) xml = tickCheckbox(xml, it.no);
   }
 
   zip.file('word/document.xml', xml);
@@ -841,16 +990,20 @@ $('gen').addEventListener('click', async ()=>{
     }
 
     /* 4. Tally + findings */
-    const tally={yes:0,no:0,na:0};
+    const tally={yes:0,partial:0,notevident:0,no:0,na:0};
     const findings=[];
     for(const it of ITEMS){
       const d=decisions[it.row]; if(!d) continue;
       tally[d.ans] = (tally[d.ans]||0)+1;
-      if(d.ans!=='yes') findings.push({row:it.row, q:it.q, ans:d.ans, ref:d.ref, why:d.why});
+      if(d.ans!=='yes') findings.push({row:it.row, q:it.q, ans:d.ans, ref:d.ref, why:d.why, group:groupOf(it)});
     }
+    const rd = reviewDetails();
+    const dc = docControl(sspPages);
+    const outcome = suggestOutcome(tally);
+    const basisText = reviewBasisText(dc, secYes, !!ssaPages, rd);
 
     /* 5. Summary of gaps & observations */
-    summaryText = localSummary(vessel, secYes, findings, tally);
+    summaryText = localSummary(vessel, secYes, findings, tally, rd, basisText, outcome);
 
     /* 6. Build both documents */
     label('Writing checklist…');
@@ -858,8 +1011,8 @@ $('gen').addEventListener('click', async ()=>{
     const blob = await buildDocx(ITEMS, decisions);
     const base = (vessel.name?vessel.name.replace(/\s+/g,'_'):'Vessel');
     const sumBlob = await summaryDocx(
-      'SSP Review — Gaps & Observations',
-      `${vessel.name||'Vessel'} · ${vessel.classId||'class n/a'} · SEC notation: ${secYes?'Yes':'No'} · ${new Date().toISOString().slice(0,10)} · ${tally.yes} Yes / ${tally.no} No / ${tally.na} N/A`,
+      'SSP Desktop Review — Summary & Findings',
+      `${vessel.name||'Vessel'} · ${vessel.classId||'class n/a'} · SEC: ${secYes?'Yes':'No'} · ${rd.date} · ${tally.yes} Yes / ${tally.partial} Partially / ${tally.notevident} Not Evident / ${tally.no} No / ${tally.na} N/A`,
       summaryText
     );
 
@@ -872,16 +1025,18 @@ $('gen').addEventListener('click', async ()=>{
     $('res-vessel').textContent =
       (vessel.name||'Vessel')+'  ·  '+(vessel.classId||'class n/a')+'  (shown for reference only — Vessel Name / Class ID are left blank on the form)'+
       '  ·  SEC: '+(secYes?'Yes':'No')+'  ·  SSA: '+(state.ssaFile?'separate document':'included in SSP')+
-      '  ·  standalone cross-reference — verify substance against the plan';
-    $('t-yes').textContent=tally.yes; $('t-no').textContent=tally.no; $('t-na').textContent=tally.na;
+      '  ·  '+outcome.short;
+    $('t-yes').textContent=tally.yes; $('t-partial').textContent=tally.partial; $('t-ne').textContent=tally.notevident;
+    $('t-no').textContent=tally.no; $('t-na').textContent=tally.na;
     $('sum-text').textContent = summaryText;
+    $('basis-pre').textContent = basisText;
     renderFindings(findings);
     const mapAll = docMap.concat(ssaMap.map(e=>({...e, id:'SSA · '+e.id})));
     $('docmap-sum').textContent = `Document map — ${mapAll.length} headings across ${sspPages.length}${ssaPages? '+'+ssaPages.length:''} pages`;
     $('docmap-pre').textContent = docMapText(mapAll) || '(no headings detected)';
     $('result').classList.add('show');
     setProgress(null);
-    setStatus('Done — '+tally.yes+' Yes · '+tally.no+' No · '+tally.na+' N/A.', 'ok');
+    setStatus('Done — '+tally.yes+' Yes · '+tally.partial+' Partially · '+tally.notevident+' Not Evident · '+tally.no+' No · '+tally.na+' N/A · '+outcome.short+'.', 'ok');
 
     /* 8. Cloud backup (optional) */
     if(sb){
@@ -918,17 +1073,25 @@ $('gen').addEventListener('click', async ()=>{
 });
 
 function renderFindings(findings){
-  const nos = findings.filter(f=>f.ans==='no');
-  const nas = findings.filter(f=>f.ans==='na');
+  const mk = f => `<div class="finding ${f.ans==='no'?'':(f.ans==='notevident'?'ne':'na')}"><div class="fq"><b>Item ${f.row}.</b> ${hesc(f.q)}</div>`+
+    `<div class="fmeta">${hesc(f.group||'')}<br>Basis: ${hesc(f.why||'see reference')}<br>Ref: ${hesc(f.ref||'—')}</div></div>`;
+  const nos   = findings.filter(f=>f.ans==='no');
+  const nes   = findings.filter(f=>f.ans==='notevident');
+  const parts = findings.filter(f=>f.ans==='partial');
+  const nas   = findings.filter(f=>f.ans==='na');
   $('no-cnt').textContent = nos.length ? nos.length+' item'+(nos.length>1?'s':'') : 'none';
-  $('findings-no').innerHTML = nos.length ? nos.map(f=>
-    `<div class="finding"><div class="fq"><b>Row ${f.row}.</b> ${hesc(f.q)}</div>`+
-    `<div class="fmeta">Basis: ${hesc(f.why||'see reference')}<br>Ref: ${hesc(f.ref||'—')}</div></div>`
-  ).join('') : '<div class="finding na"><div class="fq">No “No” findings — every applicable requirement was located in the plan.</div></div>';
+  $('ne-cnt').textContent = nes.length ? nes.length+' item'+(nes.length>1?'s':'') : 'none';
+  $('findings-no').innerHTML = nos.length ? nos.map(mk).join('') :
+    '<div class="finding na"><div class="fq">None.</div></div>';
+  $('findings-ne').innerHTML = nes.length ? nes.map(mk).join('') :
+    '<div class="finding na"><div class="fq">None — every applicable requirement was located in the submitted documents.</div></div>';
+  $('findings-partial').innerHTML = parts.length ? parts.map(f=>
+    `<div class="finding na"><div class="fq"><b>Item ${f.row}.</b> ${hesc(shorten(f.q,160))}</div><div class="fmeta">${hesc(f.ref||'')}</div></div>`).join('') :
+    '<div class="finding na"><div class="fq">None.</div></div>';
   $('findings-na').innerHTML = nas.length ? nas.map(f=>
-    `<div class="finding na"><div class="fq"><b>Row ${f.row}.</b> ${hesc(shorten(f.q,160))}</div>`+
-    `<div class="fmeta">${hesc(f.why||f.ref||'')}</div></div>`
-  ).join('') : '<div class="finding na"><div class="fq">None.</div></div>';
+    `<div class="finding na"><div class="fq"><b>Item ${f.row}.</b> ${hesc(shorten(f.q,160))}</div><div class="fmeta">${hesc(f.why||f.ref||'')}</div></div>`).join('') :
+    '<div class="finding na"><div class="fq">None.</div></div>';
+  $('fold-partial').querySelector('summary').textContent = `Partially addressed — reviewer to verify (${parts.length})`;
   $('fold-na').querySelector('summary').textContent = `Items marked N/A (${nas.length})`;
 }
 

@@ -32,11 +32,15 @@ The PDF is extracted page by page and headings are detected (SECTION / CHAPTER /
 ### 2. Evidence-based cross-reference
 For every checklist item the engine extracts the question's distinctive terms and searches the actual plan text for them:
 
-- **Found with good coverage** → **Yes**, with the real location where the evidence sits — nearest detected heading plus page, e.g. `SSP §4.4 Access Watch & Pass System, p.41`.
-- **Found only partially** → **Yes** with the location suffixed **"— verify"**, telling the auditor to confirm that section really implements the requirement.
-- **Not found at all** → **No**, with the basis written into the reference cell: *"no provision matching this requirement was found in the document text — verify manually (expected at §…)"*. Gaps surface as findings instead of being silently ticked Yes.
-- Fixed applicability rules handle known cases (ro-ro/vehicle items, electronic-SSP items, the 5-year records item, etc.) as **N/A** or **No** with a reason.
-- SSA / on-scene-survey items are searched in the separate SSA document when one is uploaded.
+The review follows the ISPS desktop-review workflow (desktop assessment prior to the initial audit) and records each item using the workflow vocabulary:
+
+- **Yes** — evidence located with good coverage; the real location is cited (nearest detected heading plus page, e.g. `SSP §4.4 Access Watch & Pass System, p.41`).
+- **Partially Addressed** — located but weak coverage; ticked Yes on the form with a "Partially addressed — reviewer to verify" comment.
+- **Not Evident** — no provision located; ticked No* on the form with the basis *"…amendment or supporting evidence required (expected at §…)"* — these are the open items requiring company response.
+- **No** — the plan conflicts with the requirement (e.g. the 5-year records item under SEC) — a deficiency/nonconformity with its basis recorded.
+- **N/A** — fixed applicability rules (ro-ro/vehicle items, electronic-SSP items, SEC section when not requested) with a reason.
+
+The app also performs the workflow's steps 1–3 automatically and reports them in a **Review basis & document control** block: PDF-format confirmation, revision status / revision history / controlled-copy markings / electronic-protection detection, review-language detection (English preferred), an FSSI "reviewer to confirm" note, and the CSO/SSO training-evidence reminder per A/13.1. Optional **review details** (reviewer, date, report/WO number, flag, company) flow into the summary, which ends with a **suggested review outcome** (acceptable / acceptable subject to amendment / not acceptable — reviewer to confirm) and the step-10 completion reminders (SSPRL / SSPARL Full Term letters, import into the work order, stamping per ABS instructions).
 
 **Honest limitation:** a text search can confirm *where* a topic is treated and expose topics that are *absent*, but it cannot judge whether the written measures are substantively adequate and ship-specific. Every output is labelled accordingly — the checklist is a documented draft; the auditor confirms substance against the plan and signs.
 
