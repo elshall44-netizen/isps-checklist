@@ -22,7 +22,7 @@ At run time the user uploads:
 3. the **Flag State Special Instructions (FSSI)** as a PDF (optional) — each detected FSSI topic is cross-checked against the SSP (indicative) and untraceable topics are listed as open items;
 4. the **CSP / other requirement documents** as a PDF (optional) — with SEC notation = Yes, the SEC-section items are referenced from this document with exact section and page.
 
-References always cite the exact located section and page (e.g. `SSP §4.4 Access Watch & Pass System, p.41`, with a second location `(also p.63)` when the evidence appears in two places); items that cannot be located state the exact section **required** and, when that section exists in the plan, its page number.
+The *SSP Doc Reference* cell on the form shows **only the matched procedure reference and its page, on two lines** (e.g. `SSP §4.4 Access Watch & Pass System` / `p.41`, with a short `verify` flag on partially-addressed items); items that cannot be located show `Not Evident` / `required: §…`. Full rationales and secondary locations live in the summary report and the on-screen findings.
 
 Section 1 (SSA & On-Scene Survey) references are taken **only from the SSA** — the separate document when uploaded, otherwise the SSA part detected inside the SSP. Section 2 (SSP) references are taken **only from the SSP**. The **Vessel Name and Class ID header fields are left empty** for the auditor to fill in.
 

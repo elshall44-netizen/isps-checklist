@@ -1075,7 +1075,9 @@ function fillTextField(xml, field, value){
   const re = new RegExp(
     '(w:val="'+field+'"[\\s\\S]*?<w:fldChar w:fldCharType="separate"\\/>)((?:(?!fldCharType="begin")[\\s\\S])*?)(<w:t(?:\\s+xml:space="preserve")?>)([\\s\\S]*?)(<\\/w:t>)'
   );
-  return xml.replace(re, (all,a,b,c,_old,d)=> a+b+c+esc(value)+d);
+  // '\n' in the value becomes a real line break inside the form field
+  const payload = String(value).split('\n').map(esc).join('</w:t><w:br/><w:t xml:space="preserve">');
+  return xml.replace(re, (all,a,b,c,_old,d)=> a+b+c+payload+d);
 }
 function tickCheckbox(xml, field){
   const re = new RegExp(
@@ -1085,19 +1087,31 @@ function tickCheckbox(xml, field){
 }
 
 /* the text written into the "SSP Doc Reference" column */
+/* The form cell shows ONLY the matched procedure reference and its page,
+   on two lines; full rationales live in the summary report and on screen. */
+function splitRef(ref, tag){
+  let r = String(ref||'').replace(/\s*\(also p\.\d+\)/, '');   // single best match only
+  let l1 = r, l2 = '';
+  let m = r.match(/^(.*?),\s*(p\.\d+.*)$/);                      // "...Title, p.41"
+  if(m){ l1 = m[1]; l2 = m[2]; }
+  else {
+    m = r.match(/^(.*?)\s*\((p\.\d+)\)\s*(.*)$/);             // "\u00a72.10 (p.4) Records"
+    if(m){ l1 = (m[1]+' '+m[3]).trim(); l2 = m[2]; }
+  }
+  if(tag) l2 = l2 ? (l2+' \u2014 '+tag) : tag;
+  return l2 ? l1+'\n'+l2 : l1;
+}
 function refCellText(d){
-  if(d.ans==='no'){
-    return (d.ref||'Not found in SSP') + (d.why ? ' — NO: '+d.why : '');
-  }
+  if(d.ans==='yes')     return splitRef(d.ref, '');
+  if(d.ans==='partial') return splitRef(d.ref, 'verify');
+  if(d.ans==='no')      return splitRef(d.ref, 'deficiency \u2014 see summary');
   if(d.ans==='notevident'){
-    return (d.ref||'Not Evident') + (d.why ? ' — '+d.why : '');
-  }
-  if(d.ans==='partial'){
-    return (d.ref||'') + ' — Partially addressed: ' + (d.why||'reviewer to verify');
+    const m = (d.why||'').match(/required at (.+?)(?: \u2014 |;|$)/);
+    return 'Not Evident' + (m ? '\nrequired: '+m[1].trim() : '\nsee review summary');
   }
   if(d.ans==='na'){
     if((d.ref||'').trim().toUpperCase()==='NA' && !d.why) return 'NA';
-    return 'N/A' + (d.why ? ' — '+d.why : '') + (d.ref && d.ref.toUpperCase()!=='NA' ? ' ['+d.ref+']' : '');
+    return 'N/A' + (d.why ? '\n'+d.why : '');
   }
   return d.ref || '';
 }
